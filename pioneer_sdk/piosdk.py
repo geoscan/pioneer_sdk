@@ -30,7 +30,7 @@ class Pioneer:
             print('Can not connect to pioneer. Do you connect to drone wifi?')
             sys.exit()
 
-        self.__send_heartbeat()
+        #self.__send_heartbeat()
         self.__heartbeat_thread = threading.Thread(target=self.__heartbeat_handler)
         self.__heartbeat_thread.daemon = True
         self.__heartbeat_thread.start()
@@ -199,13 +199,13 @@ class Pioneer:
             else:
                 i += 1
 
-    def go_to_local_point(self, x=0, y=0, z=0, vx=0, vy=0, vz=0, afx=0, afy=0, afz=0, yaw=0, yaw_rate=0,
-                          blocking=False, accuracy_m=0.1, accuracy_deg=5):
+    def go_to_local_point(self, x=None, y=None, z=None, vx=None, vy=None, vz=None, afx=None, afy=None, afz=None,
+                          yaw=None, yaw_rate=None, blocking=False, accuracy_m=0.1, accuracy_deg=5):
         parameters = [x, y, z, vx, vy, vz, afx, afy, afz, yaw, yaw_rate]
         mask = 0b0000111111111111
         element_mask = 0b0000000000000001
         for i in range(len(parameters)):
-            if parameters[i]:
+            if parameters[i] is not None:
                 mask = mask ^ element_mask
             element_mask = element_mask << 1
 
@@ -217,17 +217,28 @@ class Pioneer:
                                                                      afx, afy, afz, yaw, yaw_rate)
         # blocking can be used only in x y z yaw flight
         if blocking:
-            arrival = False
-            while not arrival:
+            arrival_m = False
+            arrival_deg = False
+            error_vector_length_square = 0
+            while not arrival_m and not arrival_deg:
                 current_position = self.get_local_position(blocking=True)
                 if current_position:
-                    if ((x - current_position.x) <= accuracy_m) & ((y - current_position.y) <= accuracy_m) & (
-                            (z - current_position.z) <= accuracy_m) & ((yaw - current_position.yaw) <= accuracy_deg):
-                        arrival = True
+                    if yaw is not None:
+                        if (yaw - current_position.yaw) <= accuracy_deg:
+                            arrival_deg = True
+                    else:
+                        arrival_deg = True
+                    position_vector = [current_position.x, current_position.y, current_position.z]
+                    for i in range(len(position_vector)):
+                        if parameters[i] is not None:
+                            error_vector_length_square += pow((parameters[i]-position_vector[i]), 2)
+                    if error_vector_length_square <= pow(accuracy_m, 2):
+                        arrival_m = True
 
     def get_local_position(self, blocking=False):
         position = self.__mavlink_socket.recv_match(type='POSITION_TARGET_LOCAL_NED', blocking=blocking,
                                                     timeout=self.__ack_timeout)
+
         if not position:
             return
         if position.get_type() == "BAD_DATA":
@@ -236,6 +247,6 @@ class Pioneer:
                 sys.stdout.flush()
         else:
             if self.__logger:
-                print("X: {x}, Y: {y}, Z: {z}, YAW: {yaw}".format(x=position.x, y=position.y, z=position.z,
+                print("X: {x}, Y: {y}, Z: {z}, YAW: {yaw}".format(x=position.x, y=position.y, z=-position.z,
                                                                   yaw=position.yaw))
             return position
