@@ -1,4 +1,4 @@
-from Pioneer_sdk import Pioneer
+from pioneer_sdk import Pioneer
 import os
 import sys
 import numpy as np
@@ -32,8 +32,9 @@ if __name__ == '__main__':
     print('press p to take samples, or esc for exit')
     print('by default they will be stored in ./camera_samples folder and the result file will appear in ./result folder')
     print('Defined number of samples is %d' % number_of_samples)
-    samples_folder = os.path.join(os.getcwd(), "piosdk_test", "camera_calibration", "camera_samples")
-    yaml_folder = os.path.join(os.getcwd(), "piosdk_test", "camera_calibration", "result")
+    os.chdir(os.path.dirname(sys.argv[0]))  # script dir
+    samples_folder = os.path.join(os.getcwd(), "camera_samples")
+    yaml_folder = os.path.join(os.getcwd(), "result")
     if not os.path.isdir(samples_folder):
         os.mkdir(samples_folder)
     if not os.path.isdir(yaml_folder):

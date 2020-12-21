@@ -1,4 +1,4 @@
-from Pioneer_sdk import Pioneer
+from pioneer_sdk import Pioneer
 import cv2
 import numpy as np
 

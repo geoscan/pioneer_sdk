@@ -1,14 +1,13 @@
-from distutils.core import setup
+from setuptools import setup
 setup(
-  name='Pioneer_sdk',
-  packages=['Pioneer_sdk'],
+  name='pioneer_sdk',
+  packages=['pioneer_sdk'],
   version='0.1',
   license='MIT',
   description='Programming tools for programming geoscan pioneer drone',
   author='geoscan',
   author_email='info@geoscan.aero',
-  url='',
-  download_url='',
+  url='https://github.com/geoscan/pioneer_sdk',
   keywords=['p', 'i', 'o', 's', 'd', 'k'],
   install_requires=[
           'pymavlink',
