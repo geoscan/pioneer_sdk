@@ -2,3 +2,6 @@
 venv/
 __pycache__
 Pioneer_sdk/__pycache__/
+/dist
+camera_calibration/camera_samples/
+camera_calibration/result/
