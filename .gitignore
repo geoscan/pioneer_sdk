@@ -1,9 +1,9 @@
 .idea/
 venv/
-build
-__pycache__
+build/
+__pycache__/
 pioneer_sdk/__pycache__/
-dist
+dist/
 camera_calibration/camera_samples/
 camera_calibration/result/
-Pioneer_sdk.egg-info
+pioneer_sdk.egg-info/
