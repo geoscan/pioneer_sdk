@@ -35,8 +35,8 @@ class Pioneer:
         self.__heartbeat_thread.daemon = True
         self.__heartbeat_thread.start()
 
-        self.__send_rc_channels(channel_1=1500, channel_2=1500, channel_3=1500, channel_4=1500, channel_5=2000,
-                                channel_6=2000)  # send mission mode on channel 6
+        # self.__send_rc_channels(channel_1=1500, channel_2=1500, channel_3=1500, channel_4=1500, channel_5=2000,
+        #                         channel_6=2000)  # send mission mode on channel 6
         print("mission mode")
 
     def get_raw_video_frame(self):
