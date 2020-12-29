@@ -1,5 +1,6 @@
 from pymavlink import mavutil
 import threading
+import multiprocessing
 import socket
 import sys
 import time
@@ -30,23 +31,33 @@ class Pioneer:
             print('Can not connect to pioneer. Do you connect to drone wifi?')
             sys.exit()
 
-        #self.__send_heartbeat()
         self.__heartbeat_thread = threading.Thread(target=self.__heartbeat_handler)
         self.__heartbeat_thread.daemon = True
         self.__heartbeat_thread.start()
 
+        self.__send_rc_channels(channel_1=1500, channel_2=1500, channel_3=1500, channel_4=1500, channel_5=2000,
+                                channel_6=2000)  # send mission mode on channel 6
+        print("mission mode")
+
     def get_raw_video_frame(self):
         try:
-            self.__video_frame_buffer += self.__video_socket.recv(self.__VIDEO_BUFFER)
-            beginning = self.__video_frame_buffer.find(b'\xff\xd8')
-            end = self.__video_frame_buffer.find(b'\xff\xd9')
-            while beginning != -1 and end != -1:
-                self.__raw_video_frame = self.__video_frame_buffer[beginning:end + 2]
-                self.__video_frame_buffer = self.__video_frame_buffer[end + 2:]
-                return self.__raw_video_frame
+            while True:
+                self.__video_frame_buffer += self.__video_socket.recv(self.__VIDEO_BUFFER)
+                beginning = self.__video_frame_buffer.find(b'\xff\xd8')
+                end = self.__video_frame_buffer.find(b'\xff\xd9')
+                # while
+                if beginning != -1 and end != -1 and end > beginning:
+                    self.__raw_video_frame = self.__video_frame_buffer[beginning:end + 2]
+                    self.__video_frame_buffer = self.__video_frame_buffer[end + 2:]
+                    break
+                else:
+                    print(len(self.__raw_video_frame))
+                    self.__video_frame_buffer = bytes()
+                    self.__raw_video_frame = bytes()
+            return self.__raw_video_frame
         except socket.error as exc:
             print('Caught exception socket.error : ', exc)
-            sys.exit()
+            #sys.exit()
 
     def __send_heartbeat(self):
         self.__mavlink_socket.mav.heartbeat_send(mavutil.mavlink.MAV_TYPE_GCS,
@@ -201,39 +212,60 @@ class Pioneer:
 
     def go_to_local_point(self, x=None, y=None, z=None, vx=None, vy=None, vz=None, afx=None, afy=None, afz=None,
                           yaw=None, yaw_rate=None, blocking=False, accuracy_m=0.1, accuracy_deg=5):
-        parameters = [x, y, z, vx, vy, vz, afx, afy, afz, yaw, yaw_rate]
+        parameters = [x, y, z, vx, vy, vz, afx, afy, afz, 0, yaw, yaw_rate]  # 0-force_set
         mask = 0b0000111111111111
         element_mask = 0b0000000000000001
         for i in range(len(parameters)):
             if parameters[i] is not None:
                 mask = mask ^ element_mask
+            else:
+                parameters[i] = 0.0
             element_mask = element_mask << 1
-
         self.__mavlink_socket.mav.set_position_target_local_ned_send(0,  # time_boot_ms
                                                                      self.__mavlink_socket.target_system,
                                                                      self.__mavlink_socket.target_component,
                                                                      mavutil.mavlink.MAV_FRAME_LOCAL_NED,
-                                                                     mask, x, y, z, vx, vy, vz,
-                                                                     afx, afy, afz, yaw, yaw_rate)
+                                                                     mask, parameters[0], parameters[1], parameters[2],
+                                                                     parameters[3], parameters[4], parameters[5],
+                                                                     parameters[6], parameters[7], parameters[8],
+                                                                     parameters[10], parameters[11])
         # blocking can be used only in x y z yaw flight
-        if blocking:
-            arrival_m = False
-            arrival_deg = False
-            error_vector_length_square = 0
-            while not arrival_m and not arrival_deg:
-                current_position = self.get_local_position(blocking=True)
-                if current_position:
-                    if yaw is not None:
-                        if (yaw - current_position.yaw) <= accuracy_deg:
-                            arrival_deg = True
-                    else:
-                        arrival_deg = True
-                    position_vector = [current_position.x, current_position.y, current_position.z]
-                    for i in range(len(position_vector)):
-                        if parameters[i] is not None:
-                            error_vector_length_square += pow((parameters[i]-position_vector[i]), 2)
-                    if error_vector_length_square <= pow(accuracy_m, 2):
-                        arrival_m = True
+        # if blocking:
+        #     while True:
+        #         if self.point_reached():
+        #             print("point reached from gtlp")
+        #             return True
+            # arrival_m = False
+            # arrival_deg = FalseS
+            # error_vector_length_square = 0
+            # while not arrival_m and not arrival_deg:
+            #     current_position = self.get_local_position(blocking=True)
+            #     if current_position:
+            #         if yaw is not None:
+            #             if (yaw - current_position.yaw) <= accuracy_deg:
+            #                 arrival_deg = True
+            #         else:
+            #             arrival_deg = True
+            #         position_vector = [current_position.x, current_position.y, current_position.z]
+            #         for i in range(len(position_vector)):
+            #             if parameters[i] is not None:
+            #                 error_vector_length_square += pow((parameters[i]-position_vector[i]), 2)
+            #         if error_vector_length_square <= pow(accuracy_m, 2):
+            #             arrival_m = True
+
+    def point_reached(self, blocking=False):
+        point_reached = self.__mavlink_socket.recv_match(type='MISSION_ITEM_REACHED', blocking=blocking,
+                                                         timeout=self.__ack_timeout)
+        if not point_reached:
+            return False
+        if point_reached.get_type() == "BAD_DATA":
+            if mavutil.all_printable(point_reached.data):
+                sys.stdout.write(point_reached.data)
+                sys.stdout.flush()
+        else:
+            if self.__logger:
+                print("point reached")
+            return True
 
     def get_local_position(self, blocking=False):
         position = self.__mavlink_socket.recv_match(type='POSITION_TARGET_LOCAL_NED', blocking=blocking,
@@ -250,3 +282,14 @@ class Pioneer:
                 print("X: {x}, Y: {y}, Z: {z}, YAW: {yaw}".format(x=position.x, y=position.y, z=-position.z,
                                                                   yaw=position.yaw))
             return position
+
+    def __send_rc_channels(self, channel_1=0xFF, channel_2=0xFF, channel_3=0xFF, channel_4=0xFF,
+                           channel_5=0xFF, channel_6=0xFF, channel_7=0xFF, channel_8=0xFF):
+        self.__mavlink_socket.mav.rc_channels_override_send(self.__mavlink_socket.target_system,
+                                                            self.__mavlink_socket.target_component, channel_1,
+                                                            channel_2, channel_3, channel_4, channel_5, channel_6,
+                                                            channel_7, channel_8)
+
+
+
+
