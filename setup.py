@@ -2,7 +2,7 @@ from setuptools import setup
 setup(
   name='pioneer_sdk',
   packages=['pioneer_sdk'],
-  version='0.2',
+  version='0.2.1',
   license='MIT',
   description='Programming tools for programming geoscan pioneer drone',
   author='geoscan',
@@ -18,5 +18,5 @@ setup(
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
   ],
-  python_requires='>=3.8.6',
+  python_requires='>=3.6',
 )
