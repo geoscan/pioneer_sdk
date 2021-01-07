@@ -23,4 +23,9 @@ You can read information about package in the documentation page
 
 ## Additional information
 
-You can find the examples and the camera calibration script in the homonymous folders
+You can find the examples and the camera calibration script in the homonymous folders.
+To satisfy requiremets for them you can use requirements.txt file and install them by 
+[pip](https://pip.pypa.io/en/stable/): 
+```bash
+python3 -m pip install -r requirements.txt
+```
