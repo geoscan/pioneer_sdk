@@ -58,12 +58,8 @@ def drone_control(buff):
             command_z += k_p_z * t_vec.item(1)
 
             while not pioneer_mini.point_reached(blocking=True):
-                print('sending local point X: {x}, Y: {y}, Z: {z}, YAW: {yaw}'.format(x=command_x, y=command_y,
-                                                                                      z=command_z, yaw=command_yaw))
                 pioneer_mini.go_to_local_point(x=command_x, y=command_y, z=command_z, yaw=command_yaw)
 
-
-pioneer_mini = Pioneer()
 
 # change if calibration_matrix.yaml file is located in not default location
 calibration_file = open(os.path.join(os.getcwd(), '..', "camera_calibration", "result", "calibration_matrix.yaml"))
@@ -74,14 +70,12 @@ dist = np.array(parsed_calibration_file.get("dist_coeff"))
 aruco_dict = aruco.Dictionary_get(aruco.DICT_6X6_1000)
 arucoParameters = aruco.DetectorParameters_create()
 
+print('start')
+pioneer_mini = Pioneer()
+pioneer_mini.arm()
+pioneer_mini.takeoff()
 
 if __name__ == '__main__':
-
-    print('start')
-    pioneer_mini.arm()
-    print('armed')
-    pioneer_mini.takeoff()
-    print('takeoff')
 
     buffer = mp.Queue(maxsize=1)
     pos_and_orient = mp.Process(target=image_proc, args=(buffer,))
@@ -93,4 +87,4 @@ if __name__ == '__main__':
     drone_flight.join()
 
     pioneer_mini.land()
-    print('landed')
+    pioneer_mini.disarm()

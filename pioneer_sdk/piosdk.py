@@ -108,6 +108,8 @@ class Pioneer:
 
     def arm(self):
         i = 0
+        if self.__logger:
+            print('arm command send')
         while True:
             self.__mavlink_socket.mav.command_long_send(
                 self.__mavlink_socket.target_system,  # target_system
@@ -124,6 +126,8 @@ class Pioneer:
             ack = self.__get_ack()
             if ack is not None:
                 if ack:
+                    if self.__logger:
+                        print('arming complete')
                     break
                 else:
                     sys.exit()
@@ -132,6 +136,8 @@ class Pioneer:
 
     def disarm(self):
         i = 0
+        if self.__logger:
+            print('disarm command send')
         while True:
             self.__mavlink_socket.mav.command_long_send(
                 self.__mavlink_socket.target_system,  # target_system
@@ -148,6 +154,8 @@ class Pioneer:
             ack = self.__get_ack()
             if ack is not None:
                 if ack:
+                    if self.__logger:
+                        print('disarming complete')
                     break
                 else:
                     self.disarm()
@@ -156,6 +164,8 @@ class Pioneer:
 
     def takeoff(self):
         i = 0
+        if self.__logger:
+            print('takeoff command send')
         while True:
             self.__mavlink_socket.mav.command_long_send(
                 self.__mavlink_socket.target_system,  # target_system
@@ -172,6 +182,8 @@ class Pioneer:
             ack = self.__get_ack()
             if ack is not None:
                 if ack:
+                    if self.__logger:
+                        print('takeoff complete')
                     break
                 else:
                     self.disarm()
@@ -181,6 +193,8 @@ class Pioneer:
 
     def land(self):
         i = 0
+        if self.__logger:
+            print('land command send')
         while True:
             self.__mavlink_socket.mav.command_long_send(
                 self.__mavlink_socket.target_system,  # target_system
@@ -197,6 +211,8 @@ class Pioneer:
             ack = self.__get_ack()
             if ack is not None:
                 if ack:
+                    if self.__logger:
+                        print('landing complete')
                     break
                 else:
                     self.land()
@@ -205,23 +221,37 @@ class Pioneer:
 
     def go_to_local_point(self, x=None, y=None, z=None, vx=None, vy=None, vz=None, afx=None, afy=None, afz=None,
                           yaw=None, yaw_rate=None):
-        parameters = [x, y, z, vx, vy, vz, afx, afy, afz, 0, yaw, yaw_rate]  # 0-force_set
+        parameters = dict(x=x, y=y, z=z, vx=vx, vy=vy, vz=vz, afx=afx, afy=afy, afz=afz, force_set=0, yaw=yaw,
+                          yaw_rate=yaw_rate)  # 0-force_set
         mask = 0b0000111111111111
         element_mask = 0b0000000000000001
-        for i in range(len(parameters)):
-            if parameters[i] is not None:
+        for n, v in parameters.items():
+            if v is not None:
                 mask = mask ^ element_mask
             else:
-                parameters[i] = 0.0
+                parameters[n] = 0.0
             element_mask = element_mask << 1
+        if self.__logger:
+            print('sending local point :', end=' ')
+            first_output = True
+            for n, v in parameters.items():
+                if parameters[n] != 0.0:
+                    if first_output:
+                        print(n, ' = ', v, sep="", end='')
+                        first_output = False
+                    else:
+                        print(', ', n, ' = ', v, sep="", end='')
+            print(end='\n')
         self.__mavlink_socket.mav.set_position_target_local_ned_send(0,  # time_boot_ms
                                                                      self.__mavlink_socket.target_system,
                                                                      self.__mavlink_socket.target_component,
                                                                      mavutil.mavlink.MAV_FRAME_LOCAL_NED,
-                                                                     mask, parameters[0], parameters[1], parameters[2],
-                                                                     parameters[3], parameters[4], parameters[5],
-                                                                     parameters[6], parameters[7], parameters[8],
-                                                                     parameters[10], parameters[11])
+                                                                     mask, parameters['x'], parameters['y'],
+                                                                     parameters['z'], parameters['vx'],
+                                                                     parameters['vy'], parameters['vz'],
+                                                                     parameters['afx'], parameters['afy'],
+                                                                     parameters['afz'], parameters['yaw'],
+                                                                     parameters['yaw_rate'])
 
     def point_reached(self, blocking=False):
         point_reached = self.__mavlink_socket.recv_match(type='MISSION_ITEM_REACHED', blocking=blocking,
