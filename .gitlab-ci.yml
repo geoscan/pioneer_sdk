@@ -1,0 +1,19 @@
+image: python:3.8-buster
+
+stages:
+  - deploy
+
+before_script:
+   - pip install twine
+   - rm -rf dist/*
+   - python3 setup.py sdist bdist_wheel
+
+deploy_production:
+  stage: deploy
+  script:
+    - TWINE_PASSWORD=${PYPI_TOKEN_VALUE} TWINE_USERNAME=${PYPI_TOKEN} python3 -m twine upload --repository pypi dist/*
+  only:
+    refs:
+      - master
+    changes:
+      - "pioneer_sdk/*"
