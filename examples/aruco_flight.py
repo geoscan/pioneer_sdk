@@ -25,6 +25,7 @@ def image_proc(buff):
                 r_mat = cv2.Rodrigues(r_vec_rodrigues)[0]
                 p = np.hstack((r_mat.reshape(3, 3), t_vec.reshape(3, 1)))
                 r_vec_euler = cv2.decomposeProjectionMatrix(p)[6]
+
                 if buff.full():
                     buff.get()
                 buff.put([t_vec, r_vec_euler])
@@ -46,7 +47,7 @@ def image_proc(buff):
 def drone_control(buff):
     command_x = float(0)
     command_y = float(0)
-    command_z = float(-1)
+    command_z = float(-1)  # flight height
     command_yaw = math.radians(float(0))
 
     k_p_xy = 0.4
@@ -69,7 +70,7 @@ def drone_control(buff):
             new_point = False
             new_message = False
 
-        if buff.full():
+        if not buff.empty():
             message = buff.get()
             if len(message) == 1 and message[0] == 'end':
                 break
@@ -120,4 +121,3 @@ if __name__ == '__main__':
     drone_flight.join()
 
     pioneer_mini.land()
-    pioneer_mini.disarm()
