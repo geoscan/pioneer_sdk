@@ -27,7 +27,6 @@ if __name__ == '__main__':
             print('esc pressed')
             cv2.destroyAllWindows()
             pioneer_mini.land()
-            pioneer_mini.disarm()
             break
         elif key == ord('w'):
             print('w')
