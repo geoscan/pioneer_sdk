@@ -29,6 +29,7 @@ def image_proc(buff):
                 if buff.full():
                     buff.get()
                 buff.put([t_vec, r_vec_euler])
+
         except cv2.error:
             continue
 
