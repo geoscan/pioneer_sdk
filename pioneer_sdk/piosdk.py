@@ -39,7 +39,6 @@ class Pioneer:
                 self.__video_frame_buffer += self.__video_socket.recv(self.__VIDEO_BUFFER)
                 beginning = self.__video_frame_buffer.find(b'\xff\xd8')
                 end = self.__video_frame_buffer.find(b'\xff\xd9')
-                # while
                 if beginning != -1 and end != -1 and end > beginning:
                     self.__raw_video_frame = self.__video_frame_buffer[beginning:end + 2]
                     self.__video_frame_buffer = self.__video_frame_buffer[end + 2:]
@@ -221,6 +220,8 @@ class Pioneer:
 
     def go_to_local_point(self, x=None, y=None, z=None, vx=None, vy=None, vz=None, afx=None, afy=None, afz=None,
                           yaw=None, yaw_rate=None):
+        ack_timeout = 0.1
+        send_time = time.time()
         parameters = dict(x=x, y=y, z=z, vx=vx, vy=vy, vz=vz, afx=afx, afy=afy, afz=afz, force_set=0, yaw=yaw,
                           yaw_rate=yaw_rate)  # 0-force_set
         mask = 0b0000111111111111
@@ -242,16 +243,22 @@ class Pioneer:
                     else:
                         print(', ', n, ' = ', v, sep="", end='')
             print(end='\n')
-        self.__mavlink_socket.mav.set_position_target_local_ned_send(0,  # time_boot_ms
-                                                                     self.__mavlink_socket.target_system,
-                                                                     self.__mavlink_socket.target_component,
-                                                                     mavutil.mavlink.MAV_FRAME_LOCAL_NED,
-                                                                     mask, parameters['x'], parameters['y'],
-                                                                     parameters['z'], parameters['vx'],
-                                                                     parameters['vy'], parameters['vz'],
-                                                                     parameters['afx'], parameters['afy'],
-                                                                     parameters['afz'], parameters['yaw'],
-                                                                     parameters['yaw_rate'])
+        while True:
+            if not self.__ack_receive_point():
+                if (time.time() - send_time) >= ack_timeout:
+                    self.__mavlink_socket.mav.set_position_target_local_ned_send(0,  # time_boot_ms
+                                                                                 self.__mavlink_socket.target_system,
+                                                                                 self.__mavlink_socket.target_component,
+                                                                                 mavutil.mavlink.MAV_FRAME_LOCAL_NED,
+                                                                                 mask, parameters['x'], parameters['y'],
+                                                                                 parameters['z'], parameters['vx'],
+                                                                                 parameters['vy'], parameters['vz'],
+                                                                                 parameters['afx'], parameters['afy'],
+                                                                                 parameters['afz'], parameters['yaw'],
+                                                                                 parameters['yaw_rate'])
+                    send_time = time.time()
+            else:
+                break
 
     def point_reached(self, blocking=False):
         point_reached = self.__mavlink_socket.recv_match(type='MISSION_ITEM_REACHED', blocking=blocking,
@@ -282,6 +289,21 @@ class Pioneer:
                 print("X: {x}, Y: {y}, Z: {z}, YAW: {yaw}".format(x=position.x, y=position.y, z=-position.z,
                                                                   yaw=position.yaw))
             return position
+
+    def __ack_receive_point(self, blocking=False, timeout=None):
+        if timeout is None:
+            timeout = self.__ack_timeout
+        ack = self.__mavlink_socket.recv_match(type='POSITION_TARGET_LOCAL_NED', blocking=blocking,
+                                               timeout=timeout)
+        if not ack:
+            return False
+        if ack.get_type() == "BAD_DATA":
+            if mavutil.all_printable(ack.data):
+                sys.stdout.write(ack.data)
+                sys.stdout.flush()
+            return False
+        else:
+            return True
 
     def __send_rc_channels(self, channel_1=0xFF, channel_2=0xFF, channel_3=0xFF, channel_4=0xFF,
                            channel_5=0xFF, channel_6=0xFF, channel_7=0xFF, channel_8=0xFF):
