@@ -1,6 +1,5 @@
 from pioneer_sdk import Pioneer
 import os
-import time
 import math
 import cv2
 import cv2.aruco as aruco
@@ -48,26 +47,25 @@ def image_proc(buff):
 def drone_control(buff):
     command_x = float(0)
     command_y = float(0)
-    command_z = float(-1)  # flight height
+    command_z = float(1)  # initial flight height
     command_yaw = math.radians(float(0))
 
-    k_p_xy = 0.4
-    k_p_z = 0.3
-    k_p_yaw = 0.7
+    k_p_xy = 0.6
+    k_p_z = 0.6
+    k_p_yaw = 0.4
     distance = 0.5
 
     t_vec = None
     r_vec_euler = None
 
-    point_send_time = time.time()
-    send_timeout = 1  # 1 second
     new_point = True
     new_message = True
 
+    p_r = False
+
     while True:
-        if (time.time()-point_send_time) >= send_timeout or (new_point and new_message):
+        if new_point and new_message:
             pioneer_mini.go_to_local_point(x=command_x, y=command_y, z=command_z, yaw=command_yaw)
-            point_send_time = time.time()
             new_point = False
             new_message = False
 
@@ -79,21 +77,24 @@ def drone_control(buff):
             r_vec_euler = message[1]
             new_message = True
 
-        if pioneer_mini.point_reached() and t_vec is not None and r_vec_euler is not None:
-            yaw = math.radians(r_vec_euler.item(1))
-            command_yaw += k_p_yaw * yaw
-            c_command_yaw = math.cos(command_yaw)
-            s_command_yaw = math.sin(command_yaw)
+        if pioneer_mini.point_reached():
+            p_r = True
+
+        if p_r and t_vec is not None and r_vec_euler is not None:
             x_camera = t_vec.item(0)
-            y_camera = t_vec.item(2)
-            z_camera = t_vec.item(1)
-            command_x += k_p_xy * (x_camera+distance*s_command_yaw)
-            if c_command_yaw >= 0:
-                command_y += k_p_xy * (y_camera - distance*c_command_yaw)
-            else:
-                command_y -= k_p_xy * (y_camera - distance*c_command_yaw)
-            command_z += k_p_z * z_camera
+            y_camera = t_vec.item(1)
+            z_camera = t_vec.item(2)
+            yaw_camera = math.radians(r_vec_euler.item(1))
+            c_yaw_prev = math.cos(command_yaw)
+            s_yaw_prev = math.sin(command_yaw)
+            command_yaw -= k_p_yaw * yaw_camera
+            c_yaw_comm = math.cos(command_yaw)
+            s_yaw_comm = math.sin(command_yaw)
+            command_x += k_p_xy*(x_camera*c_yaw_prev-z_camera*s_yaw_prev+distance*s_yaw_comm)
+            command_y += k_p_xy*(x_camera * s_yaw_prev + z_camera * c_yaw_prev - distance * c_yaw_comm)
+            command_z -= k_p_z * y_camera
             new_point = True
+            p_r = False
 
 
 # change if calibration_matrix.yaml file is located in not default location

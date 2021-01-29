@@ -21,6 +21,8 @@ class Pioneer:
         self.__ack_timeout = 1
         self.__logger = logger
 
+        self.__prev_point_id = None
+
         try:
             self.__video_control_socket.connect(video_control_address)
             self.__video_socket.bind(self.__video_control_socket.getsockname())
@@ -243,9 +245,11 @@ class Pioneer:
                     else:
                         print(', ', n, ' = ', v, sep="", end='')
             print(end='\n')
+        counter = 1
         while True:
             if not self.__ack_receive_point():
                 if (time.time() - send_time) >= ack_timeout:
+                    counter += 1
                     self.__mavlink_socket.mav.set_position_target_local_ned_send(0,  # time_boot_ms
                                                                                  self.__mavlink_socket.target_system,
                                                                                  self.__mavlink_socket.target_component,
@@ -269,10 +273,22 @@ class Pioneer:
             if mavutil.all_printable(point_reached.data):
                 sys.stdout.write(point_reached.data)
                 sys.stdout.flush()
+                return False
         else:
-            if self.__logger:
-                print("point reached")
-            return True
+            point_id = point_reached.seq
+            if self.__prev_point_id is None:
+                self.__prev_point_id = point_id
+                new_point = True
+            elif point_id > self.__prev_point_id:
+                self.__prev_point_id = point_id
+                new_point = True
+            else:
+                new_point = False
+            if self.__logger and new_point:
+                print("point reached, id: ", point_id)
+                return True
+            else:
+                return False
 
     def get_local_position(self, blocking=False):
         position = self.__mavlink_socket.recv_match(type='POSITION_TARGET_LOCAL_NED', blocking=blocking,
