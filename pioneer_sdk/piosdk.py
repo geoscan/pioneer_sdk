@@ -396,6 +396,22 @@ class Pioneer:
                                                                   yaw=position.yaw))
             return position
 
+    def get_dist_sensor_data(self, blocking=False):
+        dist_sensor_data = self.__mavlink_socket.recv_match(type='DISTANCE_SENSOR', blocking=blocking,
+                                                            timeout=self.__ack_timeout)
+        if not dist_sensor_data:
+            return
+        if dist_sensor_data.get_type() == "BAD_DATA":
+            if mavutil.all_printable(dist_sensor_data.data):
+                sys.stdout.write(dist_sensor_data.data)
+                sys.stdout.flush()
+                return
+        else:
+            curr_distance = float(dist_sensor_data.current_distance)/100  # cm to m
+            if self.__logger:
+                print("get dist sensor data: %5.2f m" % curr_distance)
+            return curr_distance
+
     def __ack_receive_point(self, blocking=False, timeout=None):
         if timeout is None:
             timeout = self.__ack_timeout
