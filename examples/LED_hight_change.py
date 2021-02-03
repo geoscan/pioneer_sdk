@@ -27,16 +27,16 @@ if __name__ == '__main__':
                     g = led_min
                     b = led_min
                 elif low < tof_data <= mid:
-                    r = led_max
+                    r = (tof_data-low)*m_to_led
                     g = (tof_data-low)*m_to_led
                     b = led_min
                 elif mid < tof_data <= high:
-                    r = led_max
-                    g = led_max
-                    b = (tof_data-mid) * m_to_led
+                    r = led_min
+                    g = (tof_data-mid) * m_to_led
+                    b = led_min
                 elif tof_data >= high:
-                    r = led_max
-                    g = led_max
+                    r = led_min
+                    g = led_min
                     b = led_max
                 pioneer_mini.led_control(r=r, g=g, b=b)
                 curr_time = time.time()
