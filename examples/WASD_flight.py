@@ -10,10 +10,10 @@ pioneer_mini.arm()
 pioneer_mini.takeoff()
 command_x = float(0)
 command_y = float(0)
-command_z = float(-1)
+command_z = float(1)
 command_yaw = math.radians(float(0))
 increment_xy = float(0.2)
-increment_z = float(-0.1)
+increment_z = float(0.1)
 increment_deg = math.radians(float(90))
 new_command = False
 
@@ -46,11 +46,11 @@ if __name__ == '__main__':
             new_command = True
         elif key == ord('q'):
             print('q')
-            command_yaw -= increment_deg
+            command_yaw += increment_deg
             new_command = True
         elif key == ord('e'):
             print('e')
-            command_yaw += increment_deg
+            command_yaw -= increment_deg
             new_command = True
         elif key == ord('h'):
             print('h')
