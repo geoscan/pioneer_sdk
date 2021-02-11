@@ -21,6 +21,8 @@ class Pioneer:
         self.__ack_timeout = 1
         self.__logger = logger
 
+        self.__prev_point_id = None
+
         try:
             self.__video_control_socket.connect(video_control_address)
             self.__video_socket.bind(self.__video_control_socket.getsockname())
@@ -218,6 +220,96 @@ class Pioneer:
             else:
                 i += 1
 
+    def lua_script_control(self, input_state='Stop'):
+        i = 0
+        target_component = 25
+        state = dict(Stop=0, Start=1)
+        command = state.get(input_state)
+        if command is not None:
+            if self.__logger:
+                print('LUA script command: %s send' % input_state)
+            while True:
+                self.__mavlink_socket.mav.command_long_send(
+                    self.__mavlink_socket.target_system,  # target_system
+                    target_component,
+                    mavutil.mavlink.MAV_CMD_COMPONENT_ARM_DISARM,  # command
+                    i,  # confirmation
+                    command,  # param1
+                    0,  # param2
+                    0,  # param3
+                    0,  # param4
+                    0,  # param5
+                    0,  # param6
+                    0)  # param7
+                ack = self.__get_ack()
+                if ack is not None:
+                    if ack:
+                        if self.__logger:
+                            print('LUA script command: %s complete' % input_state)
+                        break
+                    else:
+                        i += 1
+                else:
+                    i += 1
+        else:
+            if self.__logger:
+                print('wrong LUA command value')
+
+    def led_control(self, led_id=255, r=0, g=0, b=0):  # 255 all led
+        max_value = 255.0
+        all_led = 255
+        first_led = 0
+        last_led = 3
+        i = 0
+        led_value = [r, g, b]
+        command = True
+
+        try:
+            if led_id != all_led and (led_id < first_led or led_id > last_led):
+                command = False
+            for i in range(len(led_value)):
+                led_value[i] = float(led_value[i])
+                if led_value[i] > max_value or led_value[i] < 0:
+                    command = False
+                    break
+                led_value[i] /= max_value
+        except ValueError:
+            command = False
+
+        if command:
+            if led_id == all_led:
+                led_id_print = 'all'
+            else:
+                led_id_print = led_id
+            if self.__logger:
+                print('LED id: %s R: %i ,G: %i, B: %i send' % (led_id_print, r, g, b))
+            while True:
+                self.__mavlink_socket.mav.command_long_send(
+                    self.__mavlink_socket.target_system,  # target_system
+                    self.__mavlink_socket.target_component,
+                    mavutil.mavlink.MAV_CMD_USER_1,  # command
+                    i,  # confirmation
+                    led_id,  # param1
+                    led_value[0],  # param2
+                    led_value[1],  # param3
+                    led_value[2],  # param4
+                    0,  # param5
+                    0,  # param6
+                    0)  # param7
+                ack = self.__get_ack()
+                if ack is not None:
+                    if ack:
+                        if self.__logger:
+                            print('LED id: %s RGB send complete' % led_id_print)
+                        break
+                    else:
+                        self.led_control(led_id, r, g, b)
+                else:
+                    i += 1
+        else:
+            if self.__logger:
+                print('wrong LED RGB values or id')
+
     def go_to_local_point(self, x=None, y=None, z=None, vx=None, vy=None, vz=None, afx=None, afy=None, afz=None,
                           yaw=None, yaw_rate=None):
         ack_timeout = 0.1
@@ -243,9 +335,11 @@ class Pioneer:
                     else:
                         print(', ', n, ' = ', v, sep="", end='')
             print(end='\n')
+        counter = 1
         while True:
             if not self.__ack_receive_point():
                 if (time.time() - send_time) >= ack_timeout:
+                    counter += 1
                     self.__mavlink_socket.mav.set_position_target_local_ned_send(0,  # time_boot_ms
                                                                                  self.__mavlink_socket.target_system,
                                                                                  self.__mavlink_socket.target_component,
@@ -269,10 +363,22 @@ class Pioneer:
             if mavutil.all_printable(point_reached.data):
                 sys.stdout.write(point_reached.data)
                 sys.stdout.flush()
+                return False
         else:
-            if self.__logger:
-                print("point reached")
-            return True
+            point_id = point_reached.seq
+            if self.__prev_point_id is None:
+                self.__prev_point_id = point_id
+                new_point = True
+            elif point_id > self.__prev_point_id:
+                self.__prev_point_id = point_id
+                new_point = True
+            else:
+                new_point = False
+            if self.__logger and new_point:
+                print("point reached, id: ", point_id)
+                return True
+            else:
+                return False
 
     def get_local_position(self, blocking=False):
         position = self.__mavlink_socket.recv_match(type='POSITION_TARGET_LOCAL_NED', blocking=blocking,
@@ -289,6 +395,22 @@ class Pioneer:
                 print("X: {x}, Y: {y}, Z: {z}, YAW: {yaw}".format(x=position.x, y=position.y, z=-position.z,
                                                                   yaw=position.yaw))
             return position
+
+    def get_dist_sensor_data(self, blocking=False):
+        dist_sensor_data = self.__mavlink_socket.recv_match(type='DISTANCE_SENSOR', blocking=blocking,
+                                                            timeout=self.__ack_timeout)
+        if not dist_sensor_data:
+            return
+        if dist_sensor_data.get_type() == "BAD_DATA":
+            if mavutil.all_printable(dist_sensor_data.data):
+                sys.stdout.write(dist_sensor_data.data)
+                sys.stdout.flush()
+                return
+        else:
+            curr_distance = float(dist_sensor_data.current_distance)/100  # cm to m
+            if self.__logger:
+                print("get dist sensor data: %5.2f m" % curr_distance)
+            return curr_distance
 
     def __ack_receive_point(self, blocking=False, timeout=None):
         if timeout is None:
