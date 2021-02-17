@@ -4,7 +4,6 @@ import math
 import numpy as np
 
 pioneer_mini = Pioneer()
-video_frame = bytes()
 print('start')
 pioneer_mini.arm()
 pioneer_mini.takeoff()
@@ -64,5 +63,3 @@ if __name__ == '__main__':
         if new_command:
             pioneer_mini.go_to_local_point(x=command_x, y=command_y, z=command_z, yaw=command_yaw)
             new_command = False
-
-

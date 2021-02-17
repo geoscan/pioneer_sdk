@@ -131,6 +131,7 @@ class Pioneer:
                         print('arming complete')
                     break
                 else:
+                    self.disarm()
                     sys.exit()
             else:
                 i += 1
@@ -187,7 +188,7 @@ class Pioneer:
                         print('takeoff complete')
                     break
                 else:
-                    self.disarm()
+                    self.land()
                     sys.exit()
             else:
                 i += 1

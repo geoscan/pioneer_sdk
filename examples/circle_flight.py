@@ -17,12 +17,10 @@ command_yaw = math.radians(angle)
 new_point = True
 
 pioneer_mini = Pioneer()
-video_frame = bytes()
 print('start')
 pioneer_mini.arm()
 pioneer_mini.takeoff()
 
-counter = 1
 p_r = False
 
 if __name__ == '__main__':
@@ -47,7 +45,6 @@ if __name__ == '__main__':
                 command_y = radius * math.sin(math.radians(angle))
                 command_yaw += math.radians(increment)
                 new_point = True
-                counter = 1
             p_r = False
 
         key = cv2.waitKey(1)
@@ -56,5 +53,3 @@ if __name__ == '__main__':
             cv2.destroyAllWindows()
             pioneer_mini.land()
             exit(0)
-
-
