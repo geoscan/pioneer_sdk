@@ -31,9 +31,15 @@ class Pioneer:
             print('Can not connect to pioneer. Do you connect to drone wifi?')
             sys.exit()
 
-        self.__heartbeat_thread = threading.Thread(target=self.__heartbeat_handler)
+        self.__init_heartbeat_event = threading.Event()
+
+        self.__heartbeat_thread = threading.Thread(target=self.__heartbeat_handler,
+                                                   args= (self.__init_heartbeat_event, ))
         self.__heartbeat_thread.daemon = True
         self.__heartbeat_thread.start()
+
+        while not self.__init_heartbeat_event.is_set():
+            pass
 
     def get_raw_video_frame(self):
         try:
@@ -65,10 +71,12 @@ class Pioneer:
             print("Heartbeat from system (system %u component %u)" % (self.__mavlink_socket.target_system,
                                                                       self.__mavlink_socket.target_component))
 
-    def __heartbeat_handler(self):
+    def __heartbeat_handler(self, event):
         while True:
             self.__send_heartbeat()
             self.__receive_heartbeat()
+            if not event.is_set():
+                event.set()
             time.sleep(self.__heartbeat_send_delay)
 
     def __get_ack(self):
