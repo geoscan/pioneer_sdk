@@ -11,8 +11,10 @@ class Pioneer:
         self.__VIDEO_BUFFER = 65535
         video_control_address = (pioneer_ip, pioneer_video_control_port)
         self.__video_control_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.__video_control_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.__video_control_socket.settimeout(5)
         self.__video_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.__video_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.__video_socket.settimeout(5)
 
         self.__video_frame_buffer = bytes()
@@ -95,7 +97,7 @@ class Pioneer:
                 elif command_ack.result == 2:  # MAV_RESULT_DENIED
                     if self.__logger:
                         print('MAV_RESULT_DENIED')
-                    return False
+                    return True
                 elif command_ack.result == 3:  # MAV_RESULT_UNSUPPORTED
                     if self.__logger:
                         print('MAV_RESULT_UNSUPPORTED')
