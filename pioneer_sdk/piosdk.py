@@ -43,6 +43,9 @@ class Pioneer:
         while not self.__init_heartbeat_event.is_set():
             pass
 
+        while not self.point_reached():
+            pass
+
     def get_raw_video_frame(self):
         try:
             while True:
@@ -385,8 +388,9 @@ class Pioneer:
                 new_point = True
             else:
                 new_point = False
-            if self.__logger and new_point:
-                print("point reached, id: ", point_id)
+            if new_point:
+                if self.__logger:
+                    print("point reached, id: ", point_id)
                 return True
             else:
                 return False
