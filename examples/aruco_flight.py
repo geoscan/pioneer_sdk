@@ -27,7 +27,6 @@ def image_proc(buff, drone):
             corners, ids, rejected_img_points = aruco.detectMarkers(gray, aruco_dict, parameters=aruco_parameters)
             if np.all(ids is not None):
                 r_vec_rodrigues, t_vec, _ = aruco.estimatePoseSingleMarkers(corners, size_of_marker, mtx, dist)
-                aruco.drawDetectedMarkers(camera_frame, corners)
                 aruco.drawAxis(camera_frame, mtx, dist, r_vec_rodrigues, t_vec, 0.01)
                 aruco.drawDetectedMarkers(camera_frame, corners)
                 r_mat = cv2.Rodrigues(r_vec_rodrigues)[0]
