@@ -1,5 +1,6 @@
 from pioneer_sdk import Pioneer
 import os
+import sys
 import math
 import cv2
 import cv2.aruco as aruco
@@ -9,14 +10,8 @@ import multiprocessing as mp
 from multiprocessing.managers import BaseManager
 
 
-def image_proc(buff, drone):
+def image_proc(buff, drone, camera_mtx, camera_dist):
     size_of_marker = 0.12  # side length in meters
-    # change if calibration_matrix.yaml file is located in not default location
-    calibration_file = open(os.path.join(os.getcwd(), '..', "camera_calibration", "result", "calibration_matrix.yaml"))
-    parsed_calibration_file = yaml.load(calibration_file, Loader=yaml.FullLoader)
-    mtx = np.array(parsed_calibration_file.get("camera_matrix"))
-    dist = np.array(parsed_calibration_file.get("dist_coeff"))
-
     aruco_dict = aruco.Dictionary_get(aruco.DICT_6X6_1000)
     aruco_parameters = aruco.DetectorParameters_create()
     while True:
@@ -26,8 +21,9 @@ def image_proc(buff, drone):
             gray = cv2.cvtColor(camera_frame, cv2.COLOR_BGR2GRAY)
             corners, ids, rejected_img_points = aruco.detectMarkers(gray, aruco_dict, parameters=aruco_parameters)
             if np.all(ids is not None):
-                r_vec_rodrigues, t_vec, _ = aruco.estimatePoseSingleMarkers(corners, size_of_marker, mtx, dist)
-                aruco.drawAxis(camera_frame, mtx, dist, r_vec_rodrigues, t_vec, 0.01)
+                r_vec_rodrigues, t_vec, _ = aruco.estimatePoseSingleMarkers(corners, size_of_marker, camera_mtx,
+                                                                            camera_dist)
+                aruco.drawAxis(camera_frame, camera_mtx, camera_dist, r_vec_rodrigues, t_vec, 0.01)
                 aruco.drawDetectedMarkers(camera_frame, corners)
                 r_mat = cv2.Rodrigues(r_vec_rodrigues)[0]
                 p = np.hstack((r_mat.reshape(3, 3), t_vec.reshape(3, 1)))
@@ -107,6 +103,16 @@ def drone_control(buff, drone):
 
 if __name__ == '__main__':
     print('start')
+    try:
+        # change if calibration_matrix.yaml file is located in not default location
+        calibration_file = open(os.path.join(os.getcwd(), '..', "camera_calibration", "result",
+                                             "calibration_matrix.yaml"))
+        parsed_calibration_file = yaml.load(calibration_file, Loader=yaml.FullLoader)
+        mtx = np.array(parsed_calibration_file.get("camera_matrix"))
+        dist = np.array(parsed_calibration_file.get("dist_coeff"))
+    except FileNotFoundError:
+        print('Сan not find calibration data, please run get_camera_samples.py script from camera calibration folder')
+        sys.exit(0)
     BaseManager.register('Pioneer', Pioneer)
     manager = BaseManager()
     manager.start()
@@ -115,7 +121,7 @@ if __name__ == '__main__':
     pioneer_mini.takeoff()
 
     buffer = mp.Queue(maxsize=1)
-    pos_and_orient = mp.Process(target=image_proc, args=(buffer, pioneer_mini))
+    pos_and_orient = mp.Process(target=image_proc, args=(buffer, pioneer_mini, mtx, dist))
     drone_flight = mp.Process(target=drone_control, args=(buffer, pioneer_mini))
     pos_and_orient.start()
     drone_flight.start()
