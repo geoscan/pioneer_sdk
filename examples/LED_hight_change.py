@@ -14,9 +14,8 @@ low = 0.25
 mid = 0.5
 high = 0.75
 
-pioneer_mini = Pioneer(logger=False)
-
 if __name__ == '__main__':
+    pioneer_mini = Pioneer(logger=False)
     curr_time = time.time()
     while True:
         if time.time()-curr_time > delta:

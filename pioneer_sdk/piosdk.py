@@ -11,8 +11,10 @@ class Pioneer:
         self.__VIDEO_BUFFER = 65535
         video_control_address = (pioneer_ip, pioneer_video_control_port)
         self.__video_control_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.__video_control_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.__video_control_socket.settimeout(5)
         self.__video_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.__video_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.__video_socket.settimeout(5)
 
         self.__video_frame_buffer = bytes()
@@ -31,9 +33,18 @@ class Pioneer:
             print('Can not connect to pioneer. Do you connect to drone wifi?')
             sys.exit()
 
-        self.__heartbeat_thread = threading.Thread(target=self.__heartbeat_handler)
+        self.__init_heartbeat_event = threading.Event()
+
+        self.__heartbeat_thread = threading.Thread(target=self.__heartbeat_handler,
+                                                   args= (self.__init_heartbeat_event, ))
         self.__heartbeat_thread.daemon = True
         self.__heartbeat_thread.start()
+
+        while not self.__init_heartbeat_event.is_set():
+            pass
+
+        while not self.point_reached():
+            pass
 
     def get_raw_video_frame(self):
         try:
@@ -65,10 +76,12 @@ class Pioneer:
             print("Heartbeat from system (system %u component %u)" % (self.__mavlink_socket.target_system,
                                                                       self.__mavlink_socket.target_component))
 
-    def __heartbeat_handler(self):
+    def __heartbeat_handler(self, event):
         while True:
             self.__send_heartbeat()
             self.__receive_heartbeat()
+            if not event.is_set():
+                event.set()
             time.sleep(self.__heartbeat_send_delay)
 
     def __get_ack(self):
@@ -87,7 +100,7 @@ class Pioneer:
                 elif command_ack.result == 2:  # MAV_RESULT_DENIED
                     if self.__logger:
                         print('MAV_RESULT_DENIED')
-                    return False
+                    return True
                 elif command_ack.result == 3:  # MAV_RESULT_UNSUPPORTED
                     if self.__logger:
                         print('MAV_RESULT_UNSUPPORTED')
@@ -375,8 +388,9 @@ class Pioneer:
                 new_point = True
             else:
                 new_point = False
-            if self.__logger and new_point:
-                print("point reached, id: ", point_id)
+            if new_point:
+                if self.__logger:
+                    print("point reached, id: ", point_id)
                 return True
             else:
                 return False
