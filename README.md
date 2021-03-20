@@ -19,7 +19,7 @@ if __name__ == '__main__':
 ## Documentation
 
 You can read information about package in the documentation page 
-[readthedocs](https://pioneer-doc.readthedocs.io/ru/master/)
+[readthedocs](https://pioneer-doc.readthedocs.io/ru/master/programming/python/python_main.html)
 
 ## Additional information
 

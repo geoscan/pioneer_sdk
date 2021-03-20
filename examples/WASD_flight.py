@@ -3,10 +3,6 @@ import cv2
 import math
 import numpy as np
 
-pioneer_mini = Pioneer()
-print('start')
-pioneer_mini.arm()
-pioneer_mini.takeoff()
 command_x = float(0)
 command_y = float(0)
 command_z = float(1)
@@ -17,7 +13,10 @@ increment_deg = math.radians(float(90))
 new_command = False
 
 if __name__ == '__main__':
-
+    print('start')
+    pioneer_mini = Pioneer()
+    pioneer_mini.arm()
+    pioneer_mini.takeoff()
     while True:
         camera_frame = cv2.imdecode(np.frombuffer(pioneer_mini.get_raw_video_frame(), dtype=np.uint8), cv2.IMREAD_COLOR)
         cv2.imshow('pioneer_camera_stream', camera_frame)
