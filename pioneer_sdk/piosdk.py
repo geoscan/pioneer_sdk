@@ -55,10 +55,12 @@ class Pioneer:
         while not self.point_reached():
             pass
 
-        self.__thread_moving = threading.Thread(target=self.__thread_moving_control)
-        self.__thread_moving.daemon = True
         self.__moving_done_event = threading.Event()
         self.__moving_done_event.clear()
+
+        self.__thread_moving = threading.Thread(target=self.__thread_moving_control)
+        self.__thread_moving.daemon = True
+        self.__thread_moving.start()
 
     def get_raw_video_frame(self):
         try:
@@ -147,10 +149,12 @@ class Pioneer:
                     self.__go_to_local_point()
                     self.__execute_once = False
 
-            if self.point_reached() or self.__moving_done_event.is_set():
+            if (self.point_reached() or self.__moving_done_event.is_set()) and not self.command_id == 0:
                 self.__moving_done_event.clear()
                 self.__execute_once = True
                 self.command_id = 0
+
+            time.sleep(0.05)
 
     def get_task_id(self):
         return self.command_id
@@ -173,6 +177,7 @@ class Pioneer:
                 0,  # param6
                 0)  # param7
             ack = self.__get_ack()
+            print("ack = ", ack)
             if ack is not None:
                 if ack:
                     if self.__logger:
@@ -183,7 +188,6 @@ class Pioneer:
                     sys.exit()
             else:
                 i += 1
-        self.__thread_moving.start()
 
     def disarm(self):
         i = 0
@@ -236,7 +240,7 @@ class Pioneer:
                 if ack:
                     if self.__logger:
                         print('takeoff complete')
-                        self.__moving_done_event.set()
+                    self.__moving_done_event.set()
                     break
                 else:
                     self.land()
@@ -271,7 +275,7 @@ class Pioneer:
                 if ack:
                     if self.__logger:
                         print('landing complete')
-                        self.__moving_done_event.set()
+                    self.__moving_done_event.set()
                     break
                 else:
                     self.land()
