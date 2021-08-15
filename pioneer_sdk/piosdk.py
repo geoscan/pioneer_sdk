@@ -26,9 +26,13 @@ class Pioneer:
         self.__prev_point_id = None
 
         self.command_id = 0
-        self.__first_start = True
+        self.__pars = {}
+        self.__send_time = time.time()
 
-        self.__i = 0
+        self.__execute_once = True
+
+        self.__in_air = False
+        self.__landed = True
 
         try:
             self.__video_control_socket.connect(video_control_address)
@@ -41,7 +45,7 @@ class Pioneer:
         self.__init_heartbeat_event = threading.Event()
 
         self.__heartbeat_thread = threading.Thread(target=self.__heartbeat_handler,
-                                                   args= (self.__init_heartbeat_event, ))
+                                                   args=(self.__init_heartbeat_event, ))
         self.__heartbeat_thread.daemon = True
         self.__heartbeat_thread.start()
 
@@ -50,6 +54,11 @@ class Pioneer:
 
         while not self.point_reached():
             pass
+
+        self.__thread_moving = threading.Thread(target=self.__thread_moving_control)
+        self.__thread_moving.daemon = True
+        self.__moving_done_event = threading.Event()
+        self.__moving_done_event.clear()
 
     def get_raw_video_frame(self):
         try:
@@ -117,7 +126,7 @@ class Pioneer:
                 elif command_ack.result == 5:  # MAV_RESULT_IN_PROGRESS
                     if self.__logger:
                         print('MAV_RESULT_IN_PROGRESS')
-                    return False
+                    return self.__get_ack()
                 elif command_ack.result == 6:  # MAV_RESULT_CANCELLED
                     if self.__logger:
                         print('MAV_RESULT_CANCELLED')
@@ -125,12 +134,32 @@ class Pioneer:
         else:
             return None
 
+    def __thread_moving_control(self):
+        while True:
+            if self.__execute_once:
+                if self.command_id == 1:
+                    self.__takeoff()
+                    self.__execute_once = False
+                elif self.command_id == 2:
+                    self.__land()
+                    self.__execute_once = False
+                elif self.command_id == 3:
+                    self.__go_to_local_point()
+                    self.__execute_once = False
+
+            if self.point_reached() or self.__moving_done_event.is_set():
+                self.__moving_done_event.clear()
+                self.__execute_once = True
+                self.command_id = 0
+
+    def get_task_id(self):
+        return self.command_id
+
     def arm(self):
         i = 0
         if self.__logger:
             print('arm command send')
         while True:
-            print("im here")
             self.__mavlink_socket.mav.command_long_send(
                 self.__mavlink_socket.target_system,  # target_system
                 self.__mavlink_socket.target_component,
@@ -150,11 +179,11 @@ class Pioneer:
                         print('arming complete')
                     break
                 else:
-                    # self.disarm()
-                    # sys.exit()
-                    pass
+                    self.disarm()
+                    sys.exit()
             else:
                 i += 1
+        self.__thread_moving.start()
 
     def disarm(self):
         i = 0
@@ -185,19 +214,16 @@ class Pioneer:
                 i += 1
 
     def __takeoff(self):
-        if self.command_id == 1:
-            #print("im here")
-            if self.__first_start:
-                self.__first_start = False
-                self.__i = 0
-                if self.__logger:
-                    print('takeoff command send')
-
+        i = 0
+        self.__landed = False
+        if self.__logger:
+            print('takeoff command send')
+        while True:
             self.__mavlink_socket.mav.command_long_send(
                 self.__mavlink_socket.target_system,  # target_system
                 self.__mavlink_socket.target_component,
                 mavutil.mavlink.MAV_CMD_NAV_TAKEOFF,  # command
-                self.__i,  # confirmation
+                i,  # confirmation
                 0,  # param1
                 0,  # param2
                 0,  # param3
@@ -210,33 +236,29 @@ class Pioneer:
                 if ack:
                     if self.__logger:
                         print('takeoff complete')
-                    self.command_id = 0
-                    first_start = True
-                    return 1
+                        self.__moving_done_event.set()
+                    break
                 else:
-                    # self.land()
-                    # sys.exit()
-                    pass
+                    self.land()
+                    sys.exit()
             else:
-                self.__i += 1
-        return 0
+                i += 1
+        self.__in_air = True
 
     def takeoff(self):
         self.command_id = 1
 
     def __land(self):
-        if self.command_id == 2:
-            if self.__first_start:
-                self.__first_start = False
-                self.__i = 0
-                if self.__logger:
-                    print('land command send')
-
+        i = 0
+        self.__in_air = False
+        if self.__logger:
+            print('land command send')
+        while True:
             self.__mavlink_socket.mav.command_long_send(
                 self.__mavlink_socket.target_system,  # target_system
                 self.__mavlink_socket.target_component,
                 mavutil.mavlink.MAV_CMD_NAV_LAND,  # command
-                self.__i,  # confirmation
+                i,  # confirmation
                 0,  # param1
                 0,  # param2
                 0,  # param3
@@ -249,15 +271,13 @@ class Pioneer:
                 if ack:
                     if self.__logger:
                         print('landing complete')
-                    self.command_id = 0
-                    self.__first_start = True
-                    return 1
+                        self.__moving_done_event.set()
+                    break
                 else:
-                    # self.land()
-                    pass
+                    self.land()
             else:
-                self.__i += 1
-        return 0
+                i += 1
+        self.__landed = True
 
     def land(self):
         self.command_id = 2
@@ -352,58 +372,57 @@ class Pioneer:
             if self.__logger:
                 print('wrong LED RGB values or id')
 
-    def __go_to_local_point(self):
-        if self.command_id == 3:
-            if not self.__ack_receive_point():
-                if (time.time() - self.__send_time) >= self.__ack_timeout:
-                    self.__mavlink_socket.mav.set_position_target_local_ned_send(0,  # time_boot_ms
-                                                                                 self.__mavlink_socket.target_system,
-                                                                                 self.__mavlink_socket.target_component,
-                                                                                 mavutil.mavlink.MAV_FRAME_LOCAL_NED,
-                                                                                 self.__mask, self.__parameters['x'],
-                                                                                 self.__parameters['y'],
-                                                                                 self.__parameters['z'],
-                                                                                 self.__parameters['vx'],
-                                                                                 self.__parameters['vy'],
-                                                                                 self.__parameters['vz'],
-                                                                                 self.__parameters['afx'],
-                                                                                 self.__parameters['afy'],
-                                                                                 self.__parameters['afz'],
-                                                                                 self.__parameters['yaw'],
-                                                                                 self.__parameters['yaw_rate'])
-                    self.__send_time = time.time()
-            else:
-                self.command_id = 0
-                self.__first_start = True;
-                return 1
-
     def go_to_local_point(self, x=None, y=None, z=None, vx=None, vy=None, vz=None, afx=None, afy=None, afz=None,
                             yaw=None, yaw_rate=None):
-        if self.__first_start:
-            self.command_id = 3
-            self.__ack_timeout = 0.1
-            self.__send_time = time.time()
-            self.__parameters = dict(x=x, y=y, z=z, vx=vx, vy=vy, vz=vz, afx=afx, afy=afy, afz=afz, force_set=0, yaw=yaw,
-                              yaw_rate=yaw_rate)  # 0-force_set
-            self.__mask = 0b0000111111111111
-            self.__element_mask = 0b0000000000000001
-            for n, v in self.__parameters.items():
+        self.command_id = 3
+        self.__send_time = time.time()
+        self.__pars = dict(x=x, y=y, z=z, vx=vx, vy=vy, vz=vz, afx=afx, afy=afy, afz=afz, force_set=0, yaw=yaw,
+                           yaw_rate=yaw_rate, mask=0b0000111111111111, el_mask=0b0000000000000001)  # 0-force_set
+        for n, v in self.__pars.items():
+            if n not in ('mask', 'el_mask'):
                 if v is not None:
-                    self.__mask = self.__mask ^ self.__element_mask
+                    self.__pars['mask'] = self.__pars['mask'] ^ self.__pars['el_mask']
                 else:
-                    self.__arameters[n] = 0.0
-                self.__element_mask = self.__element_mask << 1
-            if self.__logger:
-                print('sending local point :', end=' ')
-                first_output = True
-                for n, v in self.__parameters.items():
-                    if self.__parameters[n] != 0.0:
+                    self.__pars[n] = 0.0
+                self.__pars['el_mask'] = self.__pars['el_mask'] << 1
+        if self.__logger:
+            print('sending local point :', end=' ')
+            first_output = True
+            for n, v in self.__pars.items():
+                if n not in ('mask', 'el_mask'):
+                    if self.__pars[n] != 0.0:
                         if first_output:
                             print(n, ' = ', v, sep="", end='')
                             first_output = False
                         else:
                             print(', ', n, ' = ', v, sep="", end='')
-                print(end='\n')
+            print(end='\n')
+
+    def __go_to_local_point(self):
+        ack_timeout = 0.1
+        while True:
+            if not self.__ack_receive_point():
+                if (time.time() - self.__send_time) >= ack_timeout:
+                    self.__mavlink_socket.mav.set_position_target_local_ned_send(0,  # time_boot_ms
+                                                                                 self.__mavlink_socket.target_system,
+                                                                                 self.__mavlink_socket.target_component,
+                                                                                 mavutil.mavlink.MAV_FRAME_LOCAL_NED,
+                                                                                 self.__pars['mask'],
+                                                                                 self.__pars['x'],
+                                                                                 self.__pars['y'],
+                                                                                 self.__pars['z'],
+                                                                                 self.__pars['vx'],
+                                                                                 self.__pars['vy'],
+                                                                                 self.__pars['vz'],
+                                                                                 self.__pars['afx'],
+                                                                                 self.__pars['afy'],
+                                                                                 self.__pars['afz'],
+                                                                                 self.__pars['yaw'],
+                                                                                 self.__pars['yaw_rate'])
+                    self.__send_time = time.time()
+            else:
+                self.__moving_done_event.set()
+                break
 
     def point_reached(self, blocking=False):
         point_reached = self.__mavlink_socket.recv_match(type='MISSION_ITEM_REACHED', blocking=blocking,
@@ -464,11 +483,6 @@ class Pioneer:
                 print("get dist sensor data: %5.2f m" % curr_distance)
             return curr_distance
 
-    def command_executer(self):
-        self.__takeoff()
-        #self.__land()
-        #self.__go_to_local_point()
-
     def __ack_receive_point(self, blocking=False, timeout=None):
         if timeout is None:
             timeout = self.__ack_timeout
@@ -484,9 +498,15 @@ class Pioneer:
         else:
             return True
 
-    def __send_rc_channels(self, channel_1=0xFF, channel_2=0xFF, channel_3=0xFF, channel_4=0xFF,
+    def send_rc_channels(self, channel_1=0xFF, channel_2=0xFF, channel_3=0xFF, channel_4=0xFF,
                            channel_5=0xFF, channel_6=0xFF, channel_7=0xFF, channel_8=0xFF):
         self.__mavlink_socket.mav.rc_channels_override_send(self.__mavlink_socket.target_system,
                                                             self.__mavlink_socket.target_component, channel_1,
                                                             channel_2, channel_3, channel_4, channel_5, channel_6,
                                                             channel_7, channel_8)
+
+    def in_air(self):
+        return self.__in_air
+
+    def landed(self):
+        return self.__landed
