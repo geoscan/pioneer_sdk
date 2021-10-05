@@ -362,16 +362,17 @@ class Pioneer:
                     0,  # param5
                     0,  # param6
                     0)  # param7
-                ack = self.__get_ack()
-                if ack is not None:
-                    if ack:
-                        if self.__logger:
-                            print('LED id: %s RGB send complete' % led_id_print)
-                        break
-                    else:
-                        self.led_control(led_id, r, g, b)
-                else:
-                    i += 1
+                break
+                # ack = self.__get_ack()
+                # if ack is not None:
+                #     if ack:
+                #         if self.__logger:
+                #             print('LED id: %s RGB send complete' % led_id_print)
+                #         break
+                #     else:
+                #         self.led_control(led_id, r, g, b)
+                # else:
+                #     i += 1
         else:
             if self.__logger:
                 print('wrong LED RGB values or id')
