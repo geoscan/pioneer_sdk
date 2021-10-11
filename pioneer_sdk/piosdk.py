@@ -337,6 +337,14 @@ class Pioneer:
 
     # STARTMARK led_control
     def led_control(self, led_id=255, r=0, g=0, b=0):  # 255 all led
+        '''
+        :param led_id: номер светодиода
+        :param r: красный цвет (0-255)
+        :param g: зеленый цвет (0-255)
+        :param b: синий цвет (0-255)
+        :return: ничего
+        '''
+        #ENDDOC
         max_value = 255.0
         all_led = 255
         first_led = 0
