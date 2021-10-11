@@ -62,6 +62,7 @@ class Pioneer:
         self.__thread_moving.daemon = True
         self.__thread_moving.start()
 
+    #STARTMARK get_raw_video_frame
     def get_raw_video_frame(self):
         try:
             while True:
@@ -79,6 +80,7 @@ class Pioneer:
             return self.__raw_video_frame
         except socket.error as exc:
             print('Caught exception socket.error : ', exc)
+    #ENDMARK
 
     def __send_heartbeat(self):
         self.__mavlink_socket.mav.heartbeat_send(mavutil.mavlink.MAV_TYPE_GCS,
@@ -156,9 +158,12 @@ class Pioneer:
 
             time.sleep(0.05)
 
+    # STARTMARK get_task_id
     def get_task_id(self):
         return self.command_id
+    # ENDMARK
 
+    # STARTMARK arm
     def arm(self):
         i = 0
         if self.__logger:
@@ -188,7 +193,9 @@ class Pioneer:
                     sys.exit()
             else:
                 i += 1
+    # ENDMARK
 
+    # STARTMARK disarm
     def disarm(self):
         i = 0
         if self.__logger:
@@ -216,6 +223,7 @@ class Pioneer:
                     self.disarm()
             else:
                 i += 1
+    # ENDMARK
 
     def __takeoff(self):
         i = 0
@@ -249,6 +257,7 @@ class Pioneer:
                 i += 1
         self.__in_air = True
 
+    # STARTMARK takeoff
     def takeoff(self):
         self.command_id = 1
 
@@ -282,10 +291,14 @@ class Pioneer:
             else:
                 i += 1
         self.__landed = True
+    # ENDMARK
 
+    # STARTMARK land
     def land(self):
         self.command_id = 2
+    # ENDMARK
 
+    # STARTMARK lua_script_control
     def lua_script_control(self, input_state='Stop'):
         i = 0
         target_component = 25
@@ -320,7 +333,9 @@ class Pioneer:
         else:
             if self.__logger:
                 print('wrong LUA command value')
+    # ENDMARK
 
+    # STARTMARK led_control
     def led_control(self, led_id=255, r=0, g=0, b=0):  # 255 all led
         max_value = 255.0
         all_led = 255
@@ -363,20 +378,12 @@ class Pioneer:
                     0,  # param6
                     0)  # param7
                 break
-                # ack = self.__get_ack()
-                # if ack is not None:
-                #     if ack:
-                #         if self.__logger:
-                #             print('LED id: %s RGB send complete' % led_id_print)
-                #         break
-                #     else:
-                #         self.led_control(led_id, r, g, b)
-                # else:
-                #     i += 1
         else:
             if self.__logger:
                 print('wrong LED RGB values or id')
+    # ENDMARK
 
+    # STARTMARK go_to_local_point
     def go_to_local_point(self, x=None, y=None, z=None, vx=None, vy=None, vz=None, afx=None, afy=None, afz=None,
                             yaw=None, yaw_rate=None):
         self.command_id = 3
@@ -402,6 +409,7 @@ class Pioneer:
                         else:
                             print(', ', n, ' = ', v, sep="", end='')
             print(end='\n')
+    # ENDMARK
 
     def __go_to_local_point(self):
         ack_timeout = 0.1
@@ -429,6 +437,7 @@ class Pioneer:
                 self.__moving_done_event.set()
                 break
 
+    # STARTMARK point_reached
     def point_reached(self, blocking=False):
         point_reached = self.__mavlink_socket.recv_match(type='MISSION_ITEM_REACHED', blocking=blocking,
                                                          timeout=self.__ack_timeout)
@@ -455,7 +464,9 @@ class Pioneer:
                 return True
             else:
                 return False
+    # ENDMARK
 
+    # STARTMARK get_local_position
     def get_local_position(self, blocking=False):
         position = self.__mavlink_socket.recv_match(type='POSITION_TARGET_LOCAL_NED', blocking=blocking,
                                                     timeout=self.__ack_timeout)
@@ -471,7 +482,9 @@ class Pioneer:
                 print("X: {x}, Y: {y}, Z: {z}, YAW: {yaw}".format(x=position.x, y=position.y, z=-position.z,
                                                                   yaw=position.yaw))
             return position
+    # ENDMARK
 
+    # STARTMARK get_dist_sensor_data
     def get_dist_sensor_data(self, blocking=False):
         dist_sensor_data = self.__mavlink_socket.recv_match(type='DISTANCE_SENSOR', blocking=blocking,
                                                             timeout=self.__ack_timeout)
@@ -487,6 +500,7 @@ class Pioneer:
             if self.__logger:
                 print("get dist sensor data: %5.2f m" % curr_distance)
             return curr_distance
+    # ENDMARK
 
     def __ack_receive_point(self, blocking=False, timeout=None):
         if timeout is None:
@@ -503,15 +517,21 @@ class Pioneer:
         else:
             return True
 
+    # STARTMARK send_rc_channels
     def send_rc_channels(self, channel_1=0xFF, channel_2=0xFF, channel_3=0xFF, channel_4=0xFF,
                            channel_5=0xFF, channel_6=0xFF, channel_7=0xFF, channel_8=0xFF):
         self.__mavlink_socket.mav.rc_channels_override_send(self.__mavlink_socket.target_system,
                                                             self.__mavlink_socket.target_component, channel_1,
                                                             channel_2, channel_3, channel_4, channel_5, channel_6,
                                                             channel_7, channel_8)
+    # ENDMARK
 
+    # STARTMARK in_air
     def in_air(self):
         return self.__in_air
+    # ENDMARK
 
+    # STARTMARK landed
     def landed(self):
         return self.__landed
+    # ENDMARK
