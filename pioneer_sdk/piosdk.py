@@ -7,7 +7,7 @@ import time
 
 class Pioneer:
     def __init__(self, pioneer_ip='192.168.4.1', pioneer_video_port=8888, pioneer_video_control_port=8888,
-                 pioneer_mavlink_port=8001, logger=True, bad_connection_exit=True):
+                 pioneer_mavlink_port=8001, logger=True, heartbeat_logger=False, bad_connection_exit=True):
         self.__VIDEO_BUFFER = 65535
         video_control_address = (pioneer_ip, pioneer_video_control_port)
         self.__video_control_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -22,6 +22,7 @@ class Pioneer:
         self.__heartbeat_send_delay = 1
         self.__ack_timeout = 1
         self.__logger = logger
+        self.__heartbeat_logger = heartbeat_logger
 
         self.__prev_point_id = None
 
@@ -93,12 +94,12 @@ class Pioneer:
     def __send_heartbeat(self):
         self.__mavlink_socket.mav.heartbeat_send(mavutil.mavlink.MAV_TYPE_GCS,
                                                  mavutil.mavlink.MAV_AUTOPILOT_INVALID, 0, 0, 0)
-        if self.__logger:
+        if self.__heartbeat_logger:
             print('send heartbeat')
 
     def __receive_heartbeat(self):
         self.__mavlink_socket.wait_heartbeat()
-        if self.__logger:
+        if self.__heartbeat_logger:
             print("Heartbeat from system (system %u component %u)" % (self.__mavlink_socket.target_system,
                                                                       self.__mavlink_socket.target_component))
 
