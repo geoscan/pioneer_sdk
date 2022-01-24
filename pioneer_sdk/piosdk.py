@@ -7,7 +7,7 @@ import time
 
 class Pioneer:
     def __init__(self, pioneer_ip='192.168.4.1', pioneer_video_port=8888, pioneer_video_control_port=8888,
-                 pioneer_mavlink_port=8001, logger=True):
+                 pioneer_mavlink_port=8001, logger=True, bad_connection_exit=True):
         self.__VIDEO_BUFFER = 65535
         video_control_address = (pioneer_ip, pioneer_video_control_port)
         self.__video_control_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -34,13 +34,21 @@ class Pioneer:
         self.__in_air = False
         self.__landed = True
 
+        self.__bad_connection_occured = False
+
         try:
             self.__video_control_socket.connect(video_control_address)
             self.__video_socket.bind(self.__video_control_socket.getsockname())
             self.__mavlink_socket = mavutil.mavlink_connection('udpout:%s:%s' % (pioneer_ip, pioneer_mavlink_port))
         except socket.error:
             print('Can not connect to pioneer. Do you connect to drone wifi?')
-            sys.exit()
+            if bad_connection_exit:
+                print("Stopping the program....")
+                sys.exit()
+            else:
+                print("Continuing the program...")
+                self.__bad_connection_occured = True
+                return None
 
         self.__init_heartbeat_event = threading.Event()
 
@@ -543,3 +551,7 @@ class Pioneer:
     def landed(self):
         return self.__landed
     # ENDMARK
+
+
+    def bad_connection_occured(self):
+        return self.__bad_connection_occured
