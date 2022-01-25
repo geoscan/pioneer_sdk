@@ -3,6 +3,7 @@ import threading
 import socket
 import sys
 import time
+import numpy as np
 
 
 class Pioneer:
@@ -54,7 +55,7 @@ class Pioneer:
         self.__init_heartbeat_event = threading.Event()
 
         self.__heartbeat_thread = threading.Thread(target=self.__heartbeat_handler,
-                                                   args=(self.__init_heartbeat_event, ))
+                                                   args=(self.__init_heartbeat_event,))
         self.__heartbeat_thread.daemon = True
         self.__heartbeat_thread.start()
 
@@ -71,8 +72,13 @@ class Pioneer:
         self.__thread_moving.daemon = True
         self.__thread_moving.start()
 
-    #STARTMARK get_raw_video_frame
+    # STARTMARK get_raw_video_frame
     def get_raw_video_frame(self):
+        """
+        Возвращает массив байт представляющий собой jpg фрейм, может быть выведен на экран
+        средствами к примеру opencv (см. примеры).
+        :return: массив байт фрейма.
+        """
         try:
             while True:
                 self.__video_frame_buffer += self.__video_socket.recv(self.__VIDEO_BUFFER)
@@ -89,7 +95,8 @@ class Pioneer:
             return self.__raw_video_frame
         except socket.error as exc:
             print('Caught exception socket.error : ', exc)
-    #ENDMARK
+
+    # ENDMARK
 
     def __send_heartbeat(self):
         self.__mavlink_socket.mav.heartbeat_send(mavutil.mavlink.MAV_TYPE_GCS,
@@ -169,11 +176,24 @@ class Pioneer:
 
     # STARTMARK get_task_id
     def get_task_id(self):
+        """
+        Возврашает тип выполняемой коптером задачи:
+        0 - ничего не исполняется;
+        1 - коптер совершает взлет;
+        2 - коптер совершает посадку;
+        3 - коптер выполняет движение к точке.
+        :return: число - тип задачи.
+        """
         return self.command_id
+
     # ENDMARK
 
     # STARTMARK arm
     def arm(self):
+        """
+        Активация моторов квадрокоптера.
+        :return: функция ничего не возвращает.
+        """
         i = 0
         if self.__logger:
             print('arm command send')
@@ -202,10 +222,15 @@ class Pioneer:
                     sys.exit()
             else:
                 i += 1
+
     # ENDMARK
 
     # STARTMARK disarm
     def disarm(self):
+        """
+        Отключение моторов квадрокоптера.
+        :return: функция ничего не возвращает.
+        """
         i = 0
         if self.__logger:
             print('disarm command send')
@@ -232,6 +257,7 @@ class Pioneer:
                     self.disarm()
             else:
                 i += 1
+
     # ENDMARK
 
     def __takeoff(self):
@@ -268,6 +294,11 @@ class Pioneer:
 
     # STARTMARK takeoff
     def takeoff(self):
+        """
+        Запуск автоматического взлета. Высота взлета устанавливается в параметрах автопилота
+        ( Flight_com_takeoffAlt=x, где x-высота взлета в метрах).
+        :return: функция ничего не возвращает.
+        """
         self.command_id = 1
 
     def __land(self):
@@ -300,15 +331,26 @@ class Pioneer:
             else:
                 i += 1
         self.__landed = True
+
     # ENDMARK
 
     # STARTMARK land
     def land(self):
+        """
+        Запуск автоматической посадки.
+        :return: функция ничего не возвращает.
+        """
         self.command_id = 2
+
     # ENDMARK
 
     # STARTMARK lua_script_control
     def lua_script_control(self, input_state='Stop'):
+        """
+        Управляет выполнением заранее загруженного на квадрокоптер Lua скрипта.
+        :param input_state: строка - состояние запуска скрипта: Start и Stop.
+        :return: функция ничего не возвращает.
+        """
         i = 0
         target_component = 25
         state = dict(Stop=0, Start=1)
@@ -342,18 +384,19 @@ class Pioneer:
         else:
             if self.__logger:
                 print('wrong LUA command value')
+
     # ENDMARK
 
     # STARTMARK led_control
     def led_control(self, led_id=255, r=0, g=0, b=0):  # 255 all led
-        '''
-        :param led_id: номер светодиода
-        :param r: красный цвет (0-255)
-        :param g: зеленый цвет (0-255)
-        :param b: синий цвет (0-255)
-        :return: ничего
-        '''
-        #ENDDOC
+        """
+        :param led_id: число - номер светодиода.
+        :param r: число - красный цвет (0-255).
+        :param g: число - зеленый цвет (0-255).
+        :param b: число - синий цвет (0-255).
+        :return: функция ничего не возвращает.
+        """
+        # ENDDOC
         max_value = 255.0
         all_led = 255
         first_led = 0
@@ -398,11 +441,20 @@ class Pioneer:
         else:
             if self.__logger:
                 print('wrong LED RGB values or id')
+
     # ENDMARK
 
     # STARTMARK go_to_local_point
     def go_to_local_point(self, x=None, y=None, z=None, vx=None, vy=None, vz=None, afx=None, afy=None, afz=None,
-                            yaw=None, yaw_rate=None):
+                          yaw=None, yaw_rate=None):
+        """
+        Отправляет квадрокоптер в заданные координаты относительно системы координат, связанной с точкой взлета.
+        :param x: число - координата Х (метры).
+        :param y: число - координата У (метры).
+        :param z: число - координата Z (метры).
+        :param yaw: число - угол ысканья (радианы).
+        :return: функция ничего не возвращает.
+        """
         self.command_id = 3
         self.__send_time = time.time()
         self.__pars = dict(x=x, y=y, z=z, vx=vx, vy=vy, vz=vz, afx=afx, afy=afy, afz=afz, force_set=0, yaw=yaw,
@@ -426,6 +478,7 @@ class Pioneer:
                         else:
                             print(', ', n, ' = ', v, sep="", end='')
             print(end='\n')
+
     # ENDMARK
 
     def __go_to_local_point(self):
@@ -454,8 +507,68 @@ class Pioneer:
                 self.__moving_done_event.set()
                 break
 
+    # STARTMARK vector_speed_control
+    def vector_speed_control(self, left_vector=[0, 0], right_vector=[0, 0], min_val=-500, max_val=500,
+                             polar=False, degrees=True, rev_left_y=False, rev_left_x=False,
+                             rev_right_y=False, rev_right_x=False):
+        """
+        Функция позволяет управлять скоростью квадрокоптера по аналогии с пультом управления.
+        Стики представлены в виде двух векторов, которые могут быть как в формате декартовой системы координат (x,y),
+        так и в формате полярной системы координат (length - длина вектора, angle - угол между вектором и горизонтальной осью).
+        :param left_vector: массив из двух элементов с координатами (x,y) или (length, angle).
+        :param right_vector: массив из двух элементов с координатами (x,y) или (length, angle).
+        :param min_val: число - минимальное значение для координат вектора, стандартно -500. Не учитывается в режиме полярных координат.
+        :param max_val: число - максимальное значение для координат (или длины) вектора, стандратно 500.
+        :param polar: True|False - использование полярной системы координат вместо декартовой, стандартно False.
+        :param degrees: True|False - использование градусов вместо радиан в качестве второй координаты вектора в полярной системе координат.
+        :param rev_left_y: True|False - реверс левого стика по вертикальной оси, стандартно False.
+        :param rev_left_x: True|False - реверс левого стика по горизонтальной оси, стандартно False.
+        :param rev_right_y: True|False - реверс правого стика по вертикальной оси, стандартно False.
+        :param rev_right_x: True|False - реверс правого стика по горизонтальной оси, стандартно False.
+        :return: функция ничего не возвращает.
+        """
+        def __s(val):
+            return 1 if val else -1
+
+        def remap(value, old_min, old_max, new_min, new_max):
+            old_range = (old_max - old_min)
+            new_range = (new_max - new_min)
+            new_value = (((value - old_min) * new_range) / old_range) + new_min
+            return new_value
+
+        if min_val != -500 or max_val != 500 and not polar:
+            right_vector = tuple(map(lambda x: remap(x, min_val, max_val, -500, 500), right_vector))
+            left_vector = tuple(map(lambda x: remap(x, min_val, max_val, -500, 500), left_vector))
+        if polar:
+            if max_val != 500:
+                right_vector = (remap(right_vector[0], 0, max_val, 0, 500), right_vector[1])
+                left_vector = (remap(left_vector[0], 0, max_val, 0, 500), left_vector[1])
+            if degrees:
+                right_vector = (right_vector[0], np.radians(right_vector[1]))
+                left_vector = (left_vector[0], np.radians(left_vector[1]))
+
+            right_vector = (right_vector[0] * np.cos(-right_vector[1]),
+                            right_vector[0] * np.sin(-right_vector[1]))
+            left_vector = (left_vector[0] * np.cos(-left_vector[1]),
+                           left_vector[0] * np.sin(-left_vector[1]))
+
+        channel_1 = round(1500 + left_vector[1] * __s(rev_left_y))
+        channel_2 = round(1500 - left_vector[0] * __s(rev_left_x))
+        channel_3 = round(1500 - right_vector[1] * __s(rev_right_y))
+        channel_4 = round(1500 + right_vector[0] * __s(rev_right_x))
+
+        self.send_rc_channels(channel_1=channel_1, channel_2=channel_2, channel_3=channel_3,
+                              channel_4=channel_4, channel_5=2000, channel_6=1000)
+    # ENDMARK
+
     # STARTMARK point_reached
     def point_reached(self, blocking=False):
+        """
+        Метод возвращает True, когда выполнится последняя команда go_to_local_point(),
+        то есть коптер завершил полет к точке.
+        :param blocking: True|False - флаг, блокирующий выполнение основной программы, пока метод не вернёт True.
+        :return: True|False - достиг ли квадрокоптер точки назначения.
+        """
         point_reached = self.__mavlink_socket.recv_match(type='MISSION_ITEM_REACHED', blocking=blocking,
                                                          timeout=self.__ack_timeout)
         if not point_reached:
@@ -481,10 +594,16 @@ class Pioneer:
                 return True
             else:
                 return False
+
     # ENDMARK
 
     # STARTMARK get_local_position
     def get_local_position(self, blocking=False):
+        """
+        Возвращает текущую позицию квадрокоптера.
+        :param blocking: True|False - флаг, блокирующий выполнение программы, пока не будет получен ответ.
+        :return: объект с доступом к координатам через точку (.x, .y, .z, .yaw)
+        """
         position = self.__mavlink_socket.recv_match(type='POSITION_TARGET_LOCAL_NED', blocking=blocking,
                                                     timeout=self.__ack_timeout)
 
@@ -499,10 +618,16 @@ class Pioneer:
                 print("X: {x}, Y: {y}, Z: {z}, YAW: {yaw}".format(x=position.x, y=position.y, z=-position.z,
                                                                   yaw=position.yaw))
             return position
+
     # ENDMARK
 
     # STARTMARK get_dist_sensor_data
     def get_dist_sensor_data(self, blocking=False):
+        """
+        Возвращает расстояние от квадрокоптера до земли, измеренное дальномером.
+        :param blocking: True|False - флаг, блокирующий выполнение программы, пока не будет получен ответ.
+        :return: число - расстояние до земли.
+        """
         dist_sensor_data = self.__mavlink_socket.recv_match(type='DISTANCE_SENSOR', blocking=blocking,
                                                             timeout=self.__ack_timeout)
         if not dist_sensor_data:
@@ -513,10 +638,11 @@ class Pioneer:
                 sys.stdout.flush()
                 return
         else:
-            curr_distance = float(dist_sensor_data.current_distance)/100  # cm to m
+            curr_distance = float(dist_sensor_data.current_distance) / 100  # cm to m
             if self.__logger:
                 print("get dist sensor data: %5.2f m" % curr_distance)
             return curr_distance
+
     # ENDMARK
 
     def __ack_receive_point(self, blocking=False, timeout=None):
@@ -536,23 +662,52 @@ class Pioneer:
 
     # STARTMARK send_rc_channels
     def send_rc_channels(self, channel_1=0xFF, channel_2=0xFF, channel_3=0xFF, channel_4=0xFF,
-                           channel_5=0xFF, channel_6=0xFF, channel_7=0xFF, channel_8=0xFF):
+                         channel_5=0xFF, channel_6=0xFF, channel_7=0xFF, channel_8=0xFF):
+        """
+        Фукнкция, эмулирующая пультр радиоуправления. Позволяет управлять непосредсвенно тягой, тангажом, креном, рысканьем
+        и другими параметрами, которые завязаны на пульт управления.
+        :param channel_1: число - значение тяги в диапазоне от 1000 до 2000. 0 - использование значения с реального пульта.
+        :param channel_2: число - значение рысканья в диапазоне от 1000 до 2000. 0 - использование значения с реального пульта.
+        :param channel_3: число - значение тангажа в диапазоне от 1000 до 2000. 0 - использование значения с реального пульта.
+        :param channel_4: число - значение крена в диапазоне от 1000 до 2000. 0 - использование значения с реального пульта.
+        :param channel_5: число - значение переключателя SWx от 1000 до 2000. 0 - использование значения с реального пульта.
+        :param channel_6: число - значение переключателя SWx от 1000 до 2000. 0 - использование значения с реального пульта.
+        :param channel_7: число - значение переключателя SWx от 1000 до 2000. 0 - использование значения с реального пульта.
+        :param channel_8: число - значение переключателя SWx от 1000 до 2000. 0 - использование значения с реального пульта.
+        :return: функция ничего не возвращает.
+        """
         self.__mavlink_socket.mav.rc_channels_override_send(self.__mavlink_socket.target_system,
                                                             self.__mavlink_socket.target_component, channel_1,
                                                             channel_2, channel_3, channel_4, channel_5, channel_6,
                                                             channel_7, channel_8)
+
     # ENDMARK
 
     # STARTMARK in_air
     def in_air(self):
+        """
+        Возвращает состояние квадрокоптера: True, если он находится в воздухе (и не в процессе посадки).
+        :return: True|False - состояние квадрокоптера.
+        """
         return self.__in_air
+
     # ENDMARK
 
     # STARTMARK landed
     def landed(self):
+        """
+        Возвращает состояние квадрокоптера: True, если он находится на земле.
+        :return: True|False - состояние квадрокоптера.
+        """
         return self.__landed
+
     # ENDMARK
 
-
+    # STARTMARK bad_connection_occured
     def bad_connection_occured(self):
+        """
+        Возвращает состояние подключения к квадрокоптеру: True, если произошла ошибка подключения.
+        :return: True|False - состояние подключения.
+        """
         return self.__bad_connection_occured
+    # ENDMARK
