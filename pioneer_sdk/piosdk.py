@@ -509,22 +509,23 @@ class Pioneer:
 
     # STARTMARK vector_speed_control
     def vector_speed_control(self, left_vector=[0, 0], right_vector=[0, 0], min_val=-500, max_val=500,
-                             polar=False, degrees=True, rev_left_y=False, rev_left_x=False,
-                             rev_right_y=False, rev_right_x=False):
+                             use_polar=False, degrees=True, rev_left_y=False, rev_left_x=False,
+                             rev_right_y=False, rev_right_x=False, use_zy_xr_vectors=False):
         """
         Функция позволяет управлять скоростью квадрокоптера по аналогии с пультом управления.
         Стики представлены в виде двух векторов, которые могут быть как в формате декартовой системы координат (x,y),
         так и в формате полярной системы координат (length - длина вектора, angle - угол между вектором и горизонтальной осью).
-        :param left_vector: массив из двух элементов с координатами (x,y) или (length, angle).
-        :param right_vector: массив из двух элементов с координатами (x,y) или (length, angle).
+        :param left_vector: массив из двух элементов с координатами (x,y) или (length, angle) - отвечает за тягу и рысканье.
+        :param right_vector: массив из двух элементов с координатами (x,y) или (length, angle) - отвечает за тангаж и крен.
         :param min_val: число - минимальное значение для координат вектора, стандартно -500. Не учитывается в режиме полярных координат.
         :param max_val: число - максимальное значение для координат (или длины) вектора, стандратно 500.
-        :param polar: True|False - использование полярной системы координат вместо декартовой, стандартно False.
+        :param use_polar: True|False - использование полярной системы координат вместо декартовой, стандартно False.
         :param degrees: True|False - использование градусов вместо радиан в качестве второй координаты вектора в полярной системе координат.
         :param rev_left_y: True|False - реверс левого стика по вертикальной оси, стандартно False.
         :param rev_left_x: True|False - реверс левого стика по горизонтальной оси, стандартно False.
         :param rev_right_y: True|False - реверс правого стика по вертикальной оси, стандартно False.
         :param rev_right_x: True|False - реверс правого стика по горизонтальной оси, стандартно False.
+        :param use_zy_xr_vectors: True|False - переназначение осей: левый вектор контролирует тягу и крен, а правый тангаж и рысканье.
         :return: функция ничего не возвращает.
         """
         def __s(val):
@@ -536,10 +537,12 @@ class Pioneer:
             new_value = (((value - old_min) * new_range) / old_range) + new_min
             return new_value
 
-        if min_val != -500 or max_val != 500 and not polar:
+        if use_zy_xr_vectors and not use_polar:
+            left_vector, right_vector = (right_vector[0], left_vector[1]), (left_vector[0], right_vector[1])
+        if (min_val != -500 or max_val != 500) and not use_polar:
             right_vector = tuple(map(lambda x: remap(x, min_val, max_val, -500, 500), right_vector))
             left_vector = tuple(map(lambda x: remap(x, min_val, max_val, -500, 500), left_vector))
-        if polar:
+        if use_polar:
             if max_val != 500:
                 right_vector = (remap(right_vector[0], 0, max_val, 0, 500), right_vector[1])
                 left_vector = (remap(left_vector[0], 0, max_val, 0, 500), left_vector[1])
@@ -547,15 +550,24 @@ class Pioneer:
                 right_vector = (right_vector[0], np.radians(right_vector[1]))
                 left_vector = (left_vector[0], np.radians(left_vector[1]))
 
-            right_vector = (right_vector[0] * np.cos(-right_vector[1]),
-                            right_vector[0] * np.sin(-right_vector[1]))
-            left_vector = (left_vector[0] * np.cos(-left_vector[1]),
-                           left_vector[0] * np.sin(-left_vector[1]))
+            if use_zy_xr_vectors:
+                left_vector1 = (-right_vector[0] * np.cos(-right_vector[1]),
+                               left_vector[0] * np.sin(-left_vector[1]))
+                right_vector1 = (-left_vector[0] * np.cos(-left_vector[1]),
+                                right_vector[0] * np.sin(-right_vector[1]))
+                left_vector, right_vector, = left_vector1, right_vector1
+            else:
+                left_vector = (left_vector[0] * np.cos(-left_vector[1]),
+                               left_vector[0] * np.sin(-left_vector[1]))
+                right_vector = (right_vector[0] * np.cos(-right_vector[1]),
+                                right_vector[0] * np.sin(-right_vector[1]))
 
         channel_1 = round(1500 + left_vector[1] * __s(rev_left_y))
         channel_2 = round(1500 - left_vector[0] * __s(rev_left_x))
         channel_3 = round(1500 - right_vector[1] * __s(rev_right_y))
         channel_4 = round(1500 + right_vector[0] * __s(rev_right_x))
+
+        # print(channel_1, channel_2, channel_3, channel_4)
 
         self.send_rc_channels(channel_1=channel_1, channel_2=channel_2, channel_3=channel_3,
                               channel_4=channel_4, channel_5=2000, channel_6=1000)
