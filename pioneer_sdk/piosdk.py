@@ -105,10 +105,11 @@ class Pioneer:
             print('send heartbeat')
 
     def __receive_heartbeat(self):
-        self.__mavlink_socket.wait_heartbeat()
+        beat = self.__mavlink_socket.wait_heartbeat()
         if self.__heartbeat_logger:
             print("Heartbeat from system (system %u component %u)" % (self.__mavlink_socket.target_system,
                                                                       self.__mavlink_socket.target_component))
+            print(beat)
 
     def __heartbeat_handler(self, event):
         while True:
@@ -458,7 +459,7 @@ class Pioneer:
         self.command_id = 3
         self.__send_time = time.time()
         self.__pars = dict(x=x, y=y, z=z, vx=vx, vy=vy, vz=vz, afx=afx, afy=afy, afz=afz, force_set=0, yaw=yaw,
-                           yaw_rate=yaw_rate, mask=0b0000111111111111, el_mask=0b0000000000000001)  # 0-force_set
+                           yaw_rate=yaw_rate, mask=0b111111111111, el_mask=0b000000000001)  # 0-force_set
         for n, v in self.__pars.items():
             if n not in ('mask', 'el_mask'):
                 if v is not None:
@@ -466,6 +467,7 @@ class Pioneer:
                 else:
                     self.__pars[n] = 0.0
                 self.__pars['el_mask'] = self.__pars['el_mask'] << 1
+        print(self.__pars['mask'], bin(self.__pars['mask']))
         if self.__logger:
             print('sending local point :', end=' ')
             first_output = True
@@ -500,6 +502,7 @@ class Pioneer:
                                                                                  self.__pars['afx'],
                                                                                  self.__pars['afy'],
                                                                                  self.__pars['afz'],
+                                                                                 self.__pars['force_set'],
                                                                                  self.__pars['yaw'],
                                                                                  self.__pars['yaw_rate'])
                     self.__send_time = time.time()
@@ -567,10 +570,8 @@ class Pioneer:
         channel_3 = round(1500 - right_vector[1] * __s(rev_right_y))
         channel_4 = round(1500 + right_vector[0] * __s(rev_right_x))
 
-        # print(channel_1, channel_2, channel_3, channel_4)
-
         self.send_rc_channels(channel_1=channel_1, channel_2=channel_2, channel_3=channel_3,
-                              channel_4=channel_4, channel_5=2000, channel_6=1000)
+                              channel_4=channel_4, channel_5=1000, channel_6=1500, channel_7=1500, channel_8=1000)
     # ENDMARK
 
     # STARTMARK point_reached
@@ -616,7 +617,7 @@ class Pioneer:
         :param blocking: True|False - флаг, блокирующий выполнение программы, пока не будет получен ответ.
         :return: объект с доступом к координатам через точку (.x, .y, .z, .yaw)
         """
-        position = self.__mavlink_socket.recv_match(type='POSITION_TARGET_LOCAL_NED', blocking=blocking,
+        position = self.__mavlink_socket.recv_match(type='LOCAL_POSITION_NED', blocking=blocking,
                                                     timeout=self.__ack_timeout)
 
         if not position:
@@ -627,9 +628,8 @@ class Pioneer:
                 sys.stdout.flush()
         else:
             if self.__logger:
-                print("X: {x}, Y: {y}, Z: {z}, YAW: {yaw}".format(x=position.x, y=position.y, z=-position.z,
-                                                                  yaw=position.yaw))
-            return position
+                print("X: {x}, Y: {y}, Z: {z}".format(x=position.x, y=position.y, z=position.z))
+            return position.x, position.y, position.z
 
     # ENDMARK
 
