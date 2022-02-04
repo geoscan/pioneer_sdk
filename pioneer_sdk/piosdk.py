@@ -5,6 +5,8 @@ import sys
 import time
 import numpy as np
 
+import pioneer_sdk.pioutils
+
 
 class Pioneer:
     def __init__(self, pioneer_ip='192.168.4.1', pioneer_video_port=8888, pioneer_video_control_port=8888,
@@ -31,12 +33,16 @@ class Pioneer:
         self.__pars = {}
         self.__send_time = time.time()
 
-        self.__execute_once = True
+        self.__executed_once = False
 
         self.__in_air = False
         self.__landed = True
 
         self.__bad_connection_occured = False
+
+        self.__last_position_target_local_ned = (0, 0, 0)
+
+        self.__STEP = 0
 
         try:
             self.__video_control_socket.connect(video_control_address)
@@ -52,18 +58,21 @@ class Pioneer:
                 self.__bad_connection_occured = True
                 return None
 
-        self.__init_heartbeat_event = threading.Event()
+        self.__heartbeat_event = threading.Event()
 
         self.__heartbeat_thread = threading.Thread(target=self.__heartbeat_handler,
-                                                   args=(self.__init_heartbeat_event,))
+                                                   args=(self.__heartbeat_event,))
         self.__heartbeat_thread.daemon = True
         self.__heartbeat_thread.start()
 
-        while not self.__init_heartbeat_event.is_set():
-            pass
+        self.__incoming_beat = None
 
-        while not self.point_reached():
+        while not self.__heartbeat_event.is_set():
             pass
+        self.__heartbeat_event.clear()
+
+        # while not self.point_reached():
+        #     pass
 
         self.__moving_done_event = threading.Event()
         self.__moving_done_event.clear()
@@ -71,6 +80,10 @@ class Pioneer:
         self.__thread_moving = threading.Thread(target=self.__thread_moving_control)
         self.__thread_moving.daemon = True
         self.__thread_moving.start()
+
+        self.__mavlink_socket.mav.request_data_stream_send(self.__mavlink_socket.target_system,
+                                                           self.__mavlink_socket.target_component,
+                                                           mavutil.mavlink.MAV_DATA_STREAM_POSITION, 1, 0)
 
     # STARTMARK get_raw_video_frame
     def get_raw_video_frame(self):
@@ -105,11 +118,11 @@ class Pioneer:
             print('send heartbeat')
 
     def __receive_heartbeat(self):
-        beat = self.__mavlink_socket.wait_heartbeat()
+        self.__incoming_beat = self.__mavlink_socket.wait_heartbeat()
         if self.__heartbeat_logger:
             print("Heartbeat from system (system %u component %u)" % (self.__mavlink_socket.target_system,
                                                                       self.__mavlink_socket.target_component))
-            print(beat)
+            print(self.__incoming_beat)
 
     def __heartbeat_handler(self, event):
         while True:
@@ -122,7 +135,6 @@ class Pioneer:
     def __get_ack(self):
         command_ack = self.__mavlink_socket.recv_match(type='COMMAND_ACK', blocking=True,
                                                        timeout=self.__ack_timeout)
-        print(command_ack)
         if command_ack is not None:
             if command_ack.get_type() == 'COMMAND_ACK':
                 if command_ack.result == 0:  # MAV_RESULT_ACCEPTED
@@ -158,22 +170,20 @@ class Pioneer:
 
     def __thread_moving_control(self):
         while True:
-            if self.__execute_once:
+            if not self.__executed_once:
                 if self.command_id == 1:
-                    print("Thread: sending takeoff")
                     self.__takeoff()
-                    self.__execute_once = False
+                    self.__executed_once = True
                 elif self.command_id == 2:
-                    print("Thread: sending land")
                     self.__land()
-                    self.__execute_once = False
+                    self.__executed_once = True
                 elif self.command_id == 3:
                     self.__go_to_local_point()
-                    self.__execute_once = False
+                    self.__executed_once = True
 
-            if (self.point_reached() or self.__moving_done_event.is_set()) and not self.command_id == 0:
+            if self.__moving_done_event.is_set() or (self.point_reached() and self.command_id == 3):
                 self.__moving_done_event.clear()
-                self.__execute_once = True
+                self.__executed_once = False
                 self.command_id = 0
 
             time.sleep(0.05)
@@ -198,34 +208,34 @@ class Pioneer:
         Активация моторов квадрокоптера.
         :return: функция ничего не возвращает.
         """
-        i = 0
-        if self.__logger:
-            print('arm command send')
-        while True:
-            self.__mavlink_socket.mav.command_long_send(
-                self.__mavlink_socket.target_system,  # target_system
-                self.__mavlink_socket.target_component,
-                mavutil.mavlink.MAV_CMD_COMPONENT_ARM_DISARM,  # command
-                i,  # confirmation
-                1,  # param1
-                0,  # param2 (all other params meaningless)
-                0,  # param3
-                0,  # param4
-                0,  # param5
-                0,  # param6
-                0)  # param7
-            ack = self.__get_ack()
-            print("ack = ", ack)
-            if ack is not None:
-                if ack:
-                    if self.__logger:
-                        print('arming complete')
-                    break
+        if self.command_id == 0 and self.__incoming_beat.base_mode == 0 and self.__incoming_beat.system_status == 3:
+            i = 0
+            if self.__logger:
+                print('arm command send')
+            while True:
+                self.__mavlink_socket.mav.command_long_send(
+                    self.__mavlink_socket.target_system,  # target_system
+                    self.__mavlink_socket.target_component,
+                    mavutil.mavlink.MAV_CMD_COMPONENT_ARM_DISARM,  # command
+                    i,  # confirmation
+                    1,  # param1
+                    0,  # param2 (all other params meaningless)
+                    0,  # param3
+                    0,  # param4
+                    0,  # param5
+                    0,  # param6
+                    0)  # param7
+                ack = self.__get_ack()
+                print("ack = ", ack)
+                if ack is not None:
+                    if ack:
+                        if self.__logger:
+                            print('arming complete')
+                        break
+                    else:
+                        self.disarm()
                 else:
-                    self.disarm()
-                    sys.exit()
-            else:
-                i += 1
+                    i += 1
 
     # ENDMARK
 
@@ -235,32 +245,33 @@ class Pioneer:
         Отключение моторов квадрокоптера.
         :return: функция ничего не возвращает.
         """
-        i = 0
-        if self.__logger:
-            print('disarm command send')
-        while True:
-            self.__mavlink_socket.mav.command_long_send(
-                self.__mavlink_socket.target_system,  # target_system
-                self.__mavlink_socket.target_component,
-                mavutil.mavlink.MAV_CMD_COMPONENT_ARM_DISARM,  # command
-                i,  # confirmation
-                0,  # param1
-                0,  # param2 (all other params meaningless)
-                0,  # param3
-                0,  # param4
-                0,  # param5
-                0,  # param6
-                0)  # param7
-            ack = self.__get_ack()
-            if ack is not None:
-                if ack:
-                    if self.__logger:
-                        print('disarming complete')
-                    break
+        if self.__incoming_beat.base_mode != 0:
+            i = 0
+            if self.__logger:
+                print('disarm command send')
+            while True:
+                self.__mavlink_socket.mav.command_long_send(
+                    self.__mavlink_socket.target_system,  # target_system
+                    self.__mavlink_socket.target_component,
+                    mavutil.mavlink.MAV_CMD_COMPONENT_ARM_DISARM,  # command
+                    i,  # confirmation
+                    0,  # param1
+                    0,  # param2 (all other params meaningless)
+                    0,  # param3
+                    0,  # param4
+                    0,  # param5
+                    0,  # param6
+                    0)  # param7
+                ack = self.__get_ack()
+                if ack is not None:
+                    if ack:
+                        if self.__logger:
+                            print('disarming complete')
+                        break
+                    else:
+                        self.disarm()
                 else:
-                    self.disarm()
-            else:
-                i += 1
+                    i += 1
 
     # ENDMARK
 
@@ -282,7 +293,6 @@ class Pioneer:
                 0,  # param5
                 0,  # param6
                 0)  # param7
-            print("requested ack from takeoff")
             ack = self.__get_ack()
             if ack is not None:
                 if ack:
@@ -300,7 +310,6 @@ class Pioneer:
                     self.land()
             else:
                 i += 1
-        self.__in_air = True
 
     # STARTMARK takeoff
     def takeoff(self):
@@ -309,7 +318,8 @@ class Pioneer:
         ( Flight_com_takeoffAlt=x, где x-высота взлета в метрах).
         :return: функция ничего не возвращает.
         """
-        self.command_id = 1
+        if self.command_id == 0 and self.__incoming_beat.base_mode != 0 and self.__incoming_beat.system_status == 4:
+            self.command_id = 1
 
     def __land(self):
         i = 0
@@ -329,19 +339,19 @@ class Pioneer:
                 0,  # param5
                 0,  # param6
                 0)  # param7
-            print("requested ack from land")
             ack = self.__get_ack()
             if ack is not None:
                 if ack and self.get_local_position(True)[2] < 0.2:
                     if self.__logger:
                         print('landing complete')
                     self.__moving_done_event.set()
+                    self.__landed = True
                     break
                 else:
+                    self.command_id = 0
                     self.land()
             else:
                 i += 1
-        self.__landed = True
 
     # ENDMARK
 
@@ -351,7 +361,8 @@ class Pioneer:
         Запуск автоматической посадки.
         :return: функция ничего не возвращает.
         """
-        self.command_id = 2
+        if self.command_id == 0 and self.__incoming_beat.base_mode not in (0, 128) and self.__incoming_beat.system_status == 4:
+            self.command_id = 2
 
     # ENDMARK
 
@@ -456,8 +467,7 @@ class Pioneer:
     # ENDMARK
 
     # STARTMARK go_to_local_point
-    def go_to_local_point(self, x=None, y=None, z=None, vx=None, vy=None, vz=None, afx=None, afy=None, afz=None,
-                          yaw=None, yaw_rate=None):
+    def go_to_local_point(self, x=None, y=None, z=None, yaw=None, callback=None):
         """
         Отправляет квадрокоптер в заданные координаты относительно системы координат, связанной с точкой взлета.
         :param x: число - координата Х (метры).
@@ -466,35 +476,35 @@ class Pioneer:
         :param yaw: число - угол ысканья (радианы).
         :return: функция ничего не возвращает.
         """
-        self.command_id = 3
-        self.__send_time = time.time()
-        self.__pars = dict(x=x, y=y, z=z, vx=vx, vy=vy, vz=vz, afx=afx, afy=afy, afz=afz, force_set=0, yaw=yaw,
-                           yaw_rate=yaw_rate, mask=0b111111111111, el_mask=0b000000000001)  # 0-force_set
-        for n, v in self.__pars.items():
-            if n not in ('mask', 'el_mask'):
-                if v is not None:
-                    self.__pars['mask'] = self.__pars['mask'] ^ self.__pars['el_mask']
-                else:
-                    self.__pars[n] = 0.0
-                self.__pars['el_mask'] = self.__pars['el_mask'] << 1
-        print(self.__pars['mask'], bin(self.__pars['mask']))
-        if self.__logger:
-            print('sending local point :', end=' ')
-            first_output = True
+        if self.command_id == 0:
+            self.command_id = 3
+            self.__send_time = time.time()
+            self.__pars = dict(x=x, y=y, z=z, vx=None, vy=None, vz=None, afx=None, afy=None, afz=None, force_set=0, yaw=yaw,
+                               yaw_rate=None, mask=0b111111111111, el_mask=0b000000000001, callback=callback)  # 0-force_set
             for n, v in self.__pars.items():
-                if n not in ('mask', 'el_mask'):
-                    if self.__pars[n] != 0.0:
-                        if first_output:
-                            print(n, ' = ', v, sep="", end='')
-                            first_output = False
-                        else:
-                            print(', ', n, ' = ', v, sep="", end='')
-            print(end='\n')
+                if n not in ('mask', 'el_mask', 'callback'):
+                    if v is not None:
+                        self.__pars['mask'] = self.__pars['mask'] ^ self.__pars['el_mask']
+                    else:
+                        self.__pars[n] = 0.0
+                    self.__pars['el_mask'] = self.__pars['el_mask'] << 1
+            if self.__logger:
+                print('sending local point :', end=' ')
+                first_output = True
+                for n, v in self.__pars.items():
+                    if n not in ('mask', 'el_mask'):
+                        if self.__pars[n] != 0.0:
+                            if first_output:
+                                print(n, ' = ', v, sep="", end='')
+                                first_output = False
+                            else:
+                                print(', ', n, ' = ', v, sep="", end='')
+                print(end='\n')
 
     # ENDMARK
 
     def __go_to_local_point(self):
-        ack_timeout = 0.1
+        ack_timeout = 1
         while True:
             if not self.__ack_receive_point():
                 if (time.time() - self.__send_time) >= ack_timeout:
@@ -517,8 +527,11 @@ class Pioneer:
                                                                                  self.__pars['yaw_rate'])
                     self.__send_time = time.time()
             else:
-                self.__moving_done_event.set()
                 break
+        while not self.point_reached():
+            print("KEK")
+        if self.__pars['callback'] is not None:
+            self.__pars['callback']()
 
     # STARTMARK vector_speed_control
     def vector_speed_control(self, left_vector=[0, 0], right_vector=[0, 0], min_val=-500, max_val=500,
@@ -585,38 +598,26 @@ class Pioneer:
     # ENDMARK
 
     # STARTMARK point_reached
-    def point_reached(self, blocking=False):
+    def point_reached(self, threshold=0.2, blocking=False):
         """
         Метод возвращает True, когда выполнится последняя команда go_to_local_point(),
         то есть коптер завершил полет к точке.
+        :param threshold: число - радиус сферы (м), при попадании в которую полет будет считаться завершенным.
         :param blocking: True|False - флаг, блокирующий выполнение основной программы, пока метод не вернёт True.
         :return: True|False - достиг ли квадрокоптер точки назначения.
         """
-        point_reached = self.__mavlink_socket.recv_match(type='MISSION_ITEM_REACHED', blocking=blocking,
-                                                         timeout=self.__ack_timeout)
-        if not point_reached:
-            return False
-        if point_reached.get_type() == "BAD_DATA":
-            if mavutil.all_printable(point_reached.data):
-                sys.stdout.write(point_reached.data)
-                sys.stdout.flush()
-                return False
-        else:
-            point_id = point_reached.seq
-            if self.__prev_point_id is None:
-                self.__prev_point_id = point_id
-                new_point = True
-            elif point_id > self.__prev_point_id:
-                self.__prev_point_id = point_id
-                new_point = True
-            else:
-                new_point = False
-            if new_point:
-                if self.__logger:
-                    print("point reached, id: ", point_id)
+        tpos = self.get_target_position()
+        pos = self.get_local_position()
+        if pos is not None:
+            pos = (pos[1], pos[0], pos[2])
+        try:
+            vec = pioneer_sdk.pioutils.vec_from_points(pos, tpos)
+            dist = pioneer_sdk.pioutils.vec_length(vec)
+            if dist<threshold:
                 return True
-            else:
-                return False
+        except Exception as e:
+            # print(e)
+            return False
 
     # ENDMARK
 
@@ -637,9 +638,17 @@ class Pioneer:
                 sys.stdout.write(position.data)
                 sys.stdout.flush()
         else:
-            if self.__logger:
-                print("X: {x}, Y: {y}, Z: {z}".format(x=position.x, y=position.y, z=position.z))
             return position.x, position.y, position.z
+
+    # ENDMARK
+
+    # STARTMARK get_local_position
+    def get_target_position(self):
+        """
+        Возвращает точку назначения квадрокоптера.
+        :return: объект с доступом к координатам через точку (.x, .y, .z, .yaw)
+        """
+        return self.__last_position_target_local_ned
 
     # ENDMARK
 
@@ -672,6 +681,8 @@ class Pioneer:
             timeout = self.__ack_timeout
         ack = self.__mavlink_socket.recv_match(type='POSITION_TARGET_LOCAL_NED', blocking=blocking,
                                                timeout=timeout)
+        # if self.__logger:
+        #     print('KEEEEEEEEEEEEEEEEEEEEEEK', ack)
         if not ack:
             return False
         if ack.get_type() == "BAD_DATA":
@@ -680,6 +691,7 @@ class Pioneer:
                 sys.stdout.flush()
             return False
         else:
+            self.__last_position_target_local_ned = (ack.x, ack.y, ack.z)
             return True
 
     # STARTMARK send_rc_channels
@@ -704,6 +716,17 @@ class Pioneer:
                                                             channel_7, channel_8)
 
     # ENDMARK
+
+    def sleep(self, t, callback=None):
+        if self.command_id == 0:
+            self.command_id = 4
+            self.__sleep_time_start = time.time()
+        if self.command_id == 4:
+            if time.time() - self.__sleep_time_start > t:
+                self.command_id = 0
+                self.__sleep_time_start = 0
+                if callback is not None:
+                    callback()
 
     # STARTMARK in_air
     def in_air(self):
@@ -733,3 +756,21 @@ class Pioneer:
         """
         return self.__bad_connection_occured
     # ENDMARK
+
+    def step_inc(self, custom_val=1):
+        self.__STEP += custom_val
+
+    def step_dec(self, custom_val=1):
+        self.__STEP -= custom_val
+
+    def step_get(self):
+        return self.__STEP
+
+    def step_is(self, val):
+        if self.__STEP == val:
+            return True
+        else:
+            return False
+
+    def step_reset(self, reset_to_step=0):
+        self.__STEP = reset_to_step
