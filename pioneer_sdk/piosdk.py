@@ -122,6 +122,7 @@ class Pioneer:
     def __get_ack(self):
         command_ack = self.__mavlink_socket.recv_match(type='COMMAND_ACK', blocking=True,
                                                        timeout=self.__ack_timeout)
+        print(command_ack)
         if command_ack is not None:
             if command_ack.get_type() == 'COMMAND_ACK':
                 if command_ack.result == 0:  # MAV_RESULT_ACCEPTED
@@ -159,9 +160,11 @@ class Pioneer:
         while True:
             if self.__execute_once:
                 if self.command_id == 1:
+                    print("Thread: sending takeoff")
                     self.__takeoff()
                     self.__execute_once = False
                 elif self.command_id == 2:
+                    print("Thread: sending land")
                     self.__land()
                     self.__execute_once = False
                 elif self.command_id == 3:
@@ -279,16 +282,22 @@ class Pioneer:
                 0,  # param5
                 0,  # param6
                 0)  # param7
+            print("requested ack from takeoff")
             ack = self.__get_ack()
             if ack is not None:
                 if ack:
-                    if self.__logger:
-                        print('takeoff complete')
-                    self.__moving_done_event.set()
-                    break
+                    if self.get_local_position(True)[2] > 0.5:
+                        if self.__logger:
+                            print('takeoff completed')
+                        self.__moving_done_event.set()
+                        break
+                    else:
+                        print("takeoff not completed")
+                        time.sleep(2)
+                        self.arm()
+                        self.__takeoff()
                 else:
                     self.land()
-                    sys.exit()
             else:
                 i += 1
         self.__in_air = True
@@ -320,9 +329,10 @@ class Pioneer:
                 0,  # param5
                 0,  # param6
                 0)  # param7
+            print("requested ack from land")
             ack = self.__get_ack()
             if ack is not None:
-                if ack:
+                if ack and self.get_local_position(True)[2] < 0.2:
                     if self.__logger:
                         print('landing complete')
                     self.__moving_done_event.set()
