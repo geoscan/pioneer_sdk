@@ -357,7 +357,7 @@ class Pioneer:
         Запуск автоматической посадки.
         :return: функция ничего не возвращает.
         """
-        if self.command_id == 0 and self.__incoming_beat.base_mode not in (0, 128) and self.__incoming_beat.system_status == 4:
+        if self.command_id == 0 and self.__incoming_beat.base_mode != 0 and self.__incoming_beat.system_status == 4:
             self.command_id = 2
 
     # ENDMARK
