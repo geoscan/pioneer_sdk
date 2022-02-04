@@ -295,18 +295,14 @@ class Pioneer:
                 0)  # param7
             ack = self.__get_ack()
             if ack is not None:
-                if ack:
-                    if self.get_local_position(True)[2] > 0.5:
-                        if self.__logger:
-                            print('takeoff completed')
-                        self.__moving_done_event.set()
-                        break
-                    else:
-                        print("takeoff not completed")
-                        time.sleep(2)
-                        self.arm()
-                        self.__takeoff()
+                if ack and self.get_local_position(True)[2] > 0.5:
+                    if self.__logger:
+                        print('takeoff complete')
+                    self.__moving_done_event.set()
+                    self.__in_air = True
+                    break
                 else:
+                    self.command_id = 0
                     self.land()
             else:
                 i += 1
@@ -341,7 +337,7 @@ class Pioneer:
                 0)  # param7
             ack = self.__get_ack()
             if ack is not None:
-                if ack and self.get_local_position(True)[2] < 0.2:
+                if ack:
                     if self.__logger:
                         print('landing complete')
                     self.__moving_done_event.set()
@@ -679,7 +675,7 @@ class Pioneer:
     def __ack_receive_point(self, blocking=False, timeout=None):
         if timeout is None:
             timeout = self.__ack_timeout
-        ack = self.__mavlink_socket.recv_match(type='POSITION_TARGET_LOCAL_NED', blocking=blocking,
+        ack = self.__mavlink_socket.recv_match( type='POSITION_TARGET_LOCAL_NED', blocking=blocking,
                                                timeout=timeout)
         # if self.__logger:
         #     print('KEEEEEEEEEEEEEEEEEEEEEEK', ack)
