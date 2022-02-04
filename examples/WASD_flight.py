@@ -24,7 +24,8 @@ if __name__ == '__main__':
         if key == 32:
             print('space pressed')
             pioneer_mini.arm()
-            print('point')
+        if key == ord('t'):
+            print('takeoff')
             pioneer_mini.takeoff()
         if key == 27:  # esc
             print('esc pressed')
