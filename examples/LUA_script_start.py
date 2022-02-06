@@ -1,4 +1,4 @@
-from pioneer_sdk import Pioneer
+from pioneer_sdk.synchronous import Pioneer
 import sys
 
 if __name__ == '__main__':

@@ -1,4 +1,4 @@
-from pioneer_sdk import Pioneer
+from pioneer_sdk.synchronous import Pioneer
 import time
 delta = 0.1
 m_to_led = 1000

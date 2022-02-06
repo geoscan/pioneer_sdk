@@ -1,4 +1,4 @@
-from pioneer_sdk import Pioneer
+from pioneer_sdk.synchronous import Pioneer
 import cv2
 import math
 import numpy as np

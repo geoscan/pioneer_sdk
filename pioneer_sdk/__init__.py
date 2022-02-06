@@ -1,2 +1,2 @@
-from pioneer_sdk.piosdk import Pioneer
+import pioneer_sdk
 from pioneer_sdk import pioutils
