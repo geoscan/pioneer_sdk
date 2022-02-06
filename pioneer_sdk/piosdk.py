@@ -188,6 +188,14 @@ class Pioneer:
 
             time.sleep(0.05)
 
+    def __do_callback(self, callback):
+        if callback is not None:
+            if callable(callback):
+                callback()
+            else:
+                for cbk in callback:
+                    cbk()
+
     # STARTMARK get_task_id
     def get_task_id(self):
         """
@@ -525,9 +533,8 @@ class Pioneer:
             else:
                 break
         while not self.point_reached():
-            print("KEK")
-        if self.__pars['callback'] is not None:
-            self.__pars['callback']()
+            pass
+        self.__do_callback(self.__pars['callback']())
 
     # STARTMARK vector_speed_control
     def vector_speed_control(self, left_vector=[0, 0], right_vector=[0, 0], min_val=-500, max_val=500,
@@ -677,8 +684,6 @@ class Pioneer:
             timeout = self.__ack_timeout
         ack = self.__mavlink_socket.recv_match( type='POSITION_TARGET_LOCAL_NED', blocking=blocking,
                                                timeout=timeout)
-        # if self.__logger:
-        #     print('KEEEEEEEEEEEEEEEEEEEEEEK', ack)
         if not ack:
             return False
         if ack.get_type() == "BAD_DATA":
@@ -721,8 +726,7 @@ class Pioneer:
             if time.time() - self.__sleep_time_start > t:
                 self.command_id = 0
                 self.__sleep_time_start = 0
-                if callback is not None:
-                    callback()
+                self.__do_callback(callback)
 
     # STARTMARK in_air
     def in_air(self):
