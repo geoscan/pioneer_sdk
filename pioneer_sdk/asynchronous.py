@@ -182,6 +182,7 @@ class Pioneer:
                     self.__executed_once = True
 
             if self.__moving_done_event.is_set() or (self.point_reached() and self.command_id == 3):
+                self.__last_position_target_local_ned = (0, 0, 0)
                 self.__moving_done_event.clear()
                 self.__executed_once = False
                 self.command_id = 0
@@ -533,9 +534,7 @@ class Pioneer:
                     self.__send_time = time.time()
             else:
                 break
-        while not self.point_reached():
-            pass
-        self.__do_callback(self.__pars['callback']())
+        self.__do_callback(self.__pars['callback'])
 
     # STARTMARK vector_speed_control
     def vector_speed_control(self, left_vector=[0, 0], right_vector=[0, 0], min_val=-500, max_val=500,
@@ -602,7 +601,7 @@ class Pioneer:
     # ENDMARK
 
     # STARTMARK point_reached
-    def point_reached(self, threshold=0.2, blocking=False):
+    def point_reached(self, threshold=0.3, blocking=False):
         """
         Метод возвращает True, когда выполнится последняя команда go_to_local_point(),
         то есть коптер завершил полет к точке.
