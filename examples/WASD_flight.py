@@ -18,6 +18,7 @@ if __name__ == '__main__':
     print('start')
     pioneer_mini = Pioneer()
     while True:
+        # print(pioneer_mini.get_task_id())
         camera_frame = cv2.imdecode(np.frombuffer(pioneer_mini.get_raw_video_frame(), dtype=np.uint8), cv2.IMREAD_COLOR)
         cv2.imshow('pioneer_camera_stream', camera_frame)
         key = cv2.waitKey(1)
@@ -36,19 +37,19 @@ if __name__ == '__main__':
                 break
         if key == ord('w'):
             print('w')
-            command_y += increment_xy
+            command_x += increment_xy
             new_command = True
         elif key == ord('s'):
             print('s')
-            command_y -= increment_xy
+            command_x -= increment_xy
             new_command = True
         elif key == ord('a'):
             print('a')
-            command_x -= increment_xy
+            command_y -= increment_xy
             new_command = True
         elif key == ord('d'):
             print('d')
-            command_x += increment_xy
+            command_y += increment_xy
             new_command = True
         elif key == ord('q'):
             print('q')
