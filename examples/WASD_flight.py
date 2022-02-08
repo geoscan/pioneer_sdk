@@ -8,9 +8,9 @@ command_x = float(0)
 command_y = float(0)
 command_z = float(1)
 command_yaw = math.radians(float(0))
-increment_xy = float(1)
+increment_xy = float(0.2)
 increment_z = float(0.1)
-increment_deg = math.radians(float(90))
+increment_deg = math.radians(float(20))
 new_command = False
 old_time = 0
 
@@ -30,7 +30,7 @@ if __name__ == '__main__':
             pioneer_mini.takeoff()
         if key == 27:  # esc
             print('esc pressed')
-            pioneer_mini.land()
+            pioneer_mini.land(force=True)
         if key == ord('k'):
             print('k')
             if pioneer_mini.landed():

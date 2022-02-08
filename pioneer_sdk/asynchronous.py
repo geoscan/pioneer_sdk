@@ -361,11 +361,15 @@ class Pioneer:
     # ENDMARK
 
     # STARTMARK land
-    def land(self):
+    def land(self, force=False):
         """
         Запуск автоматической посадки.
         :return: функция ничего не возвращает.
         """
+        if force and self.command_id != 2:
+            self.command_id = 0
+            self.__moving_done_event.set()
+            self.__executed_once = False
         if self.command_id == 0 and self.__incoming_beat.base_mode != 0 and self.__incoming_beat.system_status == 4:
             self.command_id = 2
 
