@@ -2,7 +2,6 @@ from pioneer_sdk.asynchronous import Pioneer
 import cv2
 import math
 import numpy as np
-import time
 
 command_x = float(0)
 command_y = float(0)
@@ -18,7 +17,6 @@ if __name__ == '__main__':
     print('start')
     pioneer_mini = Pioneer()
     while True:
-        # print(pioneer_mini.get_task_id())
         camera_frame = cv2.imdecode(np.frombuffer(pioneer_mini.get_raw_video_frame(), dtype=np.uint8), cv2.IMREAD_COLOR)
         cv2.imshow('pioneer_camera_stream', camera_frame)
         key = cv2.waitKey(1)
@@ -34,7 +32,7 @@ if __name__ == '__main__':
         if key == ord('k'):
             print('k')
             if pioneer_mini.landed():
-                break
+                pioneer_mini.disarm()
         if key == ord('w'):
             print('w')
             command_x += increment_xy
