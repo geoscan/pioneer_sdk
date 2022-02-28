@@ -182,6 +182,10 @@ class Pioneer:
                     self.__executed_once = True
 
             if self.__moving_done_event.is_set() or (self.point_reached() and self.command_id == 3):
+                if self.command_id == 3:
+                    print('I WANT TO DO CALLBACK!!!!!!')
+                    self.__do_callback(self.__pars['callback'])
+                    self.__pars = None
                 self.__last_position_target_local_ned = (0, 0, 0)
                 self.__moving_done_event.clear()
                 self.__executed_once = False
@@ -217,7 +221,7 @@ class Pioneer:
         Активация моторов квадрокоптера.
         :return: функция ничего не возвращает.
         """
-        if self.command_id == 0 and self.__incoming_beat.base_mode == 0 and self.__incoming_beat.system_status == 3:
+        if self.__incoming_beat.base_mode == 0 and self.__incoming_beat.system_status == 3:
             i = 0
             if self.__logger:
                 print('arm command send')
@@ -304,15 +308,12 @@ class Pioneer:
                 0)  # param7
             ack = self.__get_ack()
             if ack is not None:
-                if ack and self.get_local_position(True)[2] > 0.5:
+                if ack and self.get_local_position(True)[2] > 0.3:
                     if self.__logger:
                         print('takeoff complete')
                     self.__moving_done_event.set()
                     self.__in_air = True
                     break
-                else:
-                    self.command_id = 0
-                    self.land()
             else:
                 i += 1
 
@@ -366,10 +367,11 @@ class Pioneer:
         Запуск автоматической посадки.
         :return: функция ничего не возвращает.
         """
-        if force and self.command_id != 2:
-            self.command_id = 0
-            self.__moving_done_event.set()
+        if force:
+            self.command_id = 2
+            # self.__moving_done_event.set()
             self.__executed_once = False
+            self.__land()
         if self.command_id == 0 and self.__incoming_beat.base_mode != 0 and self.__incoming_beat.system_status == 4:
             self.command_id = 2
 
@@ -538,7 +540,6 @@ class Pioneer:
                     self.__send_time = time.time()
             else:
                 break
-        self.__do_callback(self.__pars['callback'])
 
     # STARTMARK vector_speed_control
     def vector_speed_control(self, left_vector=[0, 0], right_vector=[0, 0], min_val=-500, max_val=500,
@@ -614,7 +615,7 @@ class Pioneer:
         :return: True|False - достиг ли квадрокоптер точки назначения.
         """
         tpos = self.get_target_position()
-        pos = self.get_local_position()
+        pos = self.get_local_position(True)
         if pos is not None:
             pos = (pos[1], pos[0], pos[2])
         try:
@@ -639,7 +640,8 @@ class Pioneer:
                                                     timeout=self.__ack_timeout)
 
         if not position:
-            return
+            return self.get_local_position(True)
+            # return -1, -1, -1
         if position.get_type() == "BAD_DATA":
             if mavutil.all_printable(position.data):
                 sys.stdout.write(position.data)
@@ -688,6 +690,7 @@ class Pioneer:
             timeout = self.__ack_timeout
         ack = self.__mavlink_socket.recv_match( type='POSITION_TARGET_LOCAL_NED', blocking=blocking,
                                                timeout=timeout)
+        # print("ACK: ", ack)
         if not ack:
             return False
         if ack.get_type() == "BAD_DATA":
