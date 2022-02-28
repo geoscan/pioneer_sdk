@@ -183,7 +183,6 @@ class Pioneer:
 
             if self.__moving_done_event.is_set() or (self.point_reached() and self.command_id == 3):
                 if self.command_id == 3:
-                    print('I WANT TO DO CALLBACK!!!!!!')
                     self.__do_callback(self.__pars['callback'])
                     self.__pars = None
                 self.__last_position_target_local_ned = (0, 0, 0)
@@ -616,15 +615,18 @@ class Pioneer:
         """
         tpos = self.get_target_position()
         pos = self.get_local_position(True)
-        if pos is not None:
-            pos = (pos[1], pos[0], pos[2])
+        print('flag 1')
         try:
             vec = pioneer_sdk.pioutils.vec_from_points(pos, tpos)
+            print('flag 2')
             dist = pioneer_sdk.pioutils.vec_length(vec)
-            if dist<threshold:
+            print('flag 3')
+            print(tpos, pos, dist)
+            if dist < threshold:
+                print('flag 4 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
                 return True
         except Exception as e:
-            # print(e)
+            print(e)
             return False
 
     # ENDMARK
@@ -647,7 +649,7 @@ class Pioneer:
                 sys.stdout.write(position.data)
                 sys.stdout.flush()
         else:
-            return position.x, position.y, position.z
+            return position.y, position.x, position.z
 
     # ENDMARK
 
