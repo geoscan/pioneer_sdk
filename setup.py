@@ -2,7 +2,7 @@ from setuptools import setup
 setup(
   name='pioneer_sdk',
   packages=['pioneer_sdk'],
-  version='0.3.0',
+  version='0.3.1',
   license='MIT',
   description='Programming tools for programming geoscan pioneer drone',
   author='geoscan',
