@@ -20,6 +20,11 @@ if __name__ == '__main__':
         camera_frame = cv2.imdecode(np.frombuffer(pioneer_mini.get_raw_video_frame(), dtype=np.uint8), cv2.IMREAD_COLOR)
         cv2.imshow('pioneer_camera_stream', camera_frame)
         key = cv2.waitKey(1)
+
+        if key == ord('p'):
+            command_y, command_x, command_z = pioneer_mini.get_local_position(True)
+            print('pos: ', command_x, command_y, command_z)
+
         if key == 32:
             print('space pressed')
             pioneer_mini.arm()

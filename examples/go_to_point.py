@@ -6,7 +6,7 @@ import time
 
 if __name__ == '__main__':
     print('start')
-    pioneer_mini = Pioneer()
+    pioneer_mini = Pioneer(logger=False, heartbeat_logger=False)
     posX = None
     posY = None
     posZ = None
@@ -20,10 +20,6 @@ if __name__ == '__main__':
         if key == 27:
             pioneer_mini.land(force=True)
 
-        if time.time() - told > 0.5:
-            print(pioneer_mini.command_id)
-            told = time.time()
-
         if pioneer_mini.step_get() == 0:
             pioneer_mini.takeoff()
             if pioneer_mini.in_air():
@@ -35,7 +31,7 @@ if __name__ == '__main__':
             pioneer_mini.sleep(1, callback=pioneer_mini.step_inc)
 
         elif pioneer_mini.step_get() == 2:
-            pioneer_mini.go_to_local_point(x=1, y=posY, z=posZ+1, yaw=0, callback=pioneer_mini.step_inc)
+            pioneer_mini.go_to_local_point(x=4, y=5, z=2, yaw=0, callback=pioneer_mini.step_inc)
 
         elif pioneer_mini.step_get() == 3:
             pioneer_mini.sleep(1, callback=pioneer_mini.step_inc)

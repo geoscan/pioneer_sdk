@@ -23,7 +23,7 @@ class Pioneer:
         self.__video_frame_buffer = bytes()
         self.__raw_video_frame = 0
         self.__heartbeat_send_delay = 1
-        self.__ack_timeout = 1
+        self.__ack_timeout = 0.2
         self.__logger = logger
         self.__heartbeat_logger = heartbeat_logger
 
@@ -183,6 +183,7 @@ class Pioneer:
 
             if self.__moving_done_event.is_set() or (self.point_reached() and self.command_id == 3):
                 if self.command_id == 3:
+                    print('Point reached')
                     self.__do_callback(self.__pars['callback'])
                     self.__pars = None
                 self.__last_position_target_local_ned = (0, 0, 0)
@@ -499,18 +500,18 @@ class Pioneer:
                     else:
                         self.__pars[n] = 0.0
                     self.__pars['el_mask'] = self.__pars['el_mask'] << 1
-            if self.__logger:
-                print('sending local point :', end=' ')
-                first_output = True
-                for n, v in self.__pars.items():
-                    if n not in ('mask', 'el_mask'):
-                        if self.__pars[n] != 0.0:
-                            if first_output:
-                                print(n, ' = ', v, sep="", end='')
-                                first_output = False
-                            else:
-                                print(', ', n, ' = ', v, sep="", end='')
-                print(end='\n')
+
+            print('sending local point :', end=' ')
+            first_output = True
+            for n, v in self.__pars.items():
+                if n not in ('mask', 'el_mask'):
+                    if self.__pars[n] != 0.0:
+                        if first_output:
+                            print(n, ' = ', v, sep="", end='')
+                            first_output = False
+                        else:
+                            print(', ', n, ' = ', v, sep="", end='')
+            print(end='\n')
 
     # ENDMARK
 
@@ -615,19 +616,19 @@ class Pioneer:
         """
         tpos = self.get_target_position()
         pos = self.get_local_position(True)
-        print('flag 1')
-        try:
-            vec = pioneer_sdk.pioutils.vec_from_points(pos, tpos)
-            print('flag 2')
-            dist = pioneer_sdk.pioutils.vec_length(vec)
-            print('flag 3')
-            print(tpos, pos, dist)
-            if dist < threshold:
-                print('flag 4 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
-                return True
-        except Exception as e:
-            print(e)
-            return False
+        # print('flag 1')
+        # try:
+        vec = pioneer_sdk.pioutils.vec_from_points(pos, tpos)
+        # print('flag 2')
+        dist = pioneer_sdk.pioutils.vec_length(vec)
+        # print('flag 3')
+        # print(tpos, pos, dist)
+        if dist < threshold:
+            # print('flag 4 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
+            return True
+        # except Exception as e:
+        #     print('WAT')
+        #     return False
 
     # ENDMARK
 
@@ -641,10 +642,12 @@ class Pioneer:
         position = self.__mavlink_socket.recv_match(type='LOCAL_POSITION_NED', blocking=blocking,
                                                     timeout=self.__ack_timeout)
 
+        # print("haha recursion")
         if not position:
             return self.get_local_position(True)
             # return -1, -1, -1
-        if position.get_type() == "BAD_DATA":
+        elif position.get_type() == "BAD_DATA":
+            # return self.get_local_position(True)
             if mavutil.all_printable(position.data):
                 sys.stdout.write(position.data)
                 sys.stdout.flush()
