@@ -606,29 +606,32 @@ class Pioneer:
     # ENDMARK
 
     # STARTMARK point_reached
-    def point_reached(self, threshold=0.3, blocking=False):
-        """
-        Метод возвращает True, когда выполнится последняя команда go_to_local_point(),
-        то есть коптер завершил полет к точке.
-        :param threshold: число - радиус сферы (м), при попадании в которую полет будет считаться завершенным.
-        :param blocking: True|False - флаг, блокирующий выполнение основной программы, пока метод не вернёт True.
-        :return: True|False - достиг ли квадрокоптер точки назначения.
-        """
-        tpos = self.get_target_position()
-        pos = self.get_local_position(True)
-        # print('flag 1')
-        # try:
-        vec = pioneer_sdk.pioutils.vec_from_points(pos, tpos)
-        # print('flag 2')
-        dist = pioneer_sdk.pioutils.vec_length(vec)
-        # print('flag 3')
-        # print(tpos, pos, dist)
-        if dist < threshold:
-            # print('flag 4 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
-            return True
-        # except Exception as e:
-        #     print('WAT')
-        #     return False
+    def point_reached(self, blocking=False):
+        point_reached = self.__mavlink_socket.recv_match(type='MISSION_ITEM_REACHED', blocking=blocking,
+                                                         timeout=self.__ack_timeout)
+        if not point_reached:
+            return False
+        if point_reached.get_type() == "BAD_DATA":
+            if mavutil.all_printable(point_reached.data):
+                sys.stdout.write(point_reached.data)
+                sys.stdout.flush()
+                return False
+        else:
+            point_id = point_reached.seq
+            if self.__prev_point_id is None:
+                self.__prev_point_id = point_id
+                new_point = True
+            elif point_id > self.__prev_point_id:
+                self.__prev_point_id = point_id
+                new_point = True
+            else:
+                new_point = False
+            if new_point:
+                if self.__logger:
+                    print("point reached, id: ", point_id)
+                return True
+            else:
+                return False
 
     # ENDMARK
 
