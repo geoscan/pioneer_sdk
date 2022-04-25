@@ -1,2 +1,2 @@
 [build-system]
-requires = ["setuptools", "wheel", "cmake", "ez_setup"]
+requires = ["setuptools", "wheel", "cmake", "lxml", "future"]
