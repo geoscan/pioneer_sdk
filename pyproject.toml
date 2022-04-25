@@ -1,12 +1,29 @@
 [project]
-dependencies = [
-  "future==0.18.2",
-  "lxml==4.6.2",
-  "numpy==1.19.5",
-  "opencv-contrib-python==4.5.1.48",
-  "pymavlink==2.4.14",
-  "PyYAML==5.3.1"
-  ]
+name = "pioneer_sdk"
+version = "0.2.6"
+description = "Programming tools for programming geoscan pioneer drone"
+authors = ["geoscan <info@geoscan.aero>"]
+license = "MIT"
+readme = "README.md"
+python = "^3.6"
+homepage = "https://github.com/geoscan/pioneer_sdk"
+repository = "https://github.com/geoscan/pioneer_sdk"
+documentation = "https://github.com/geoscan/pioneer_sdk"
+keywords = ["mavlink", "pioneer", "geoscan"]
+classifiers=[
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent"
+    ]
+
+[dependencies]
+future = ">=0.18.2"
+lxml = ">=4.6.2"
+numpy = ">=1.19.5"
+opencv-contrib-python = ">=4.5.1.48"
+pymavlink = ">=2.4.14"
+PyYAML = ">=5.3.1"
+  
 [build-system]
 requires = ["setuptools", "wheel"]
 build_backend = "setuptools.build_meta"
