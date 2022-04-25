@@ -11,7 +11,6 @@ setup(
   keywords=['mavlink', 'pioneer', 'geoscan'],
   setup_requires=['wheel'],
   install_requires=[
-          'wheel',
           'pymavlink',
       ],
   classifiers=[
