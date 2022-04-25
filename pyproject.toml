@@ -16,7 +16,8 @@ dependencies = [
     "lxml>=4.6.2",
     "numpy>=1.19.5",
     "opencv-contrib-python>=4.5.1.48",
-    "PyYAML>=5.3.1"
+    "PyYAML>=5.3.1",
+    "pymavlink>=2.4.14"
     ]
   
 [build-system]
