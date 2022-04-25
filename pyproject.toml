@@ -3,7 +3,6 @@ name = "pioneer_sdk"
 version = "0.2.6"
 description = "Programming tools for programming geoscan pioneer drone"
 authors = ["geoscan <info@geoscan.aero>"]
-license = ["MIT",]
 readme = "README.md"
 python = "^3.6"
 homepage = "https://github.com/geoscan/pioneer_sdk"
