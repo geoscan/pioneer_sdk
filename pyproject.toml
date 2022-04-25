@@ -12,8 +12,6 @@ classifiers=[
     ]
 
 dependencies = [
-    "setuptools",
-    "wheel",
     "future>=0.18.2",
     "lxml>=4.6.2",
     "numpy>=1.19.5",
