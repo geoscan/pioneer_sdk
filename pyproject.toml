@@ -4,10 +4,6 @@ version = "0.2.6"
 description = "Programming tools for programming geoscan pioneer drone"
 authors = [{name = "Geoscan", email = "info@geoscan.aero"},]
 readme = "README.md"
-python = "^3.6"
-homepage = "https://github.com/geoscan/pioneer_sdk"
-repository = "https://github.com/geoscan/pioneer_sdk"
-documentation = "https://github.com/geoscan/pioneer_sdk"
 keywords = ["mavlink", "pioneer", "geoscan"]
 classifiers=[
     "Programming Language :: Python :: 3",
