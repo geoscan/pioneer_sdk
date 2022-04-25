@@ -9,7 +9,6 @@ setup(
   author_email='info@geoscan.aero',
   url='https://github.com/geoscan/pioneer_sdk',
   keywords=['mavlink', 'pioneer', 'geoscan'],
-  setup_requires=['wheel'],
   install_requires=[
           'pymavlink',
       ],
