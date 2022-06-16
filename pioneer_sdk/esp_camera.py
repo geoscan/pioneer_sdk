@@ -7,14 +7,11 @@ parsing incoming JPEG frames.
 import socket
 import cv2
 import numpy as np
-
-
 from pymavlink import mavutil
 import threading
 import socket
 import sys
 import time
-
 
 
 class EspCamera:
@@ -96,7 +93,6 @@ def run_video_stream(interactive=False):
         cv2.imshow('pioneer_camera_stream', camera_frame)
 
         # ESC key terminates the stream
-
         if interactive and cv2.waitKey(1) == 27:  # ESC
             cv2.destroyAllWindows()
             break
