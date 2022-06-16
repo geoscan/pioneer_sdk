@@ -97,7 +97,8 @@ class VideoStream:
             cv2.imshow('pioneer_camera_stream', camera_frame)
 
             # ESC key terminates the stream
-            if interactive and cv2.waitKey(1) == 27:  # ESC
+            esc = 27
+            if interactive and cv2.waitKey(1) == esc:  # ESC
                 cv2.destroyAllWindows()
                 break
 
