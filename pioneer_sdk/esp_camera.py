@@ -69,7 +69,6 @@ class EspCamera:
         return self.__raw_video_frame
 
 
-
 @dataclass
 class VideoStream:
     camera: EspCamera = field(default_factory=EspCamera)
