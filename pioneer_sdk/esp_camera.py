@@ -73,7 +73,6 @@ def run_video_stream(interactive=False):
     Continuously receives JPEG frames from ESP32, parses them, and renders it using standard OpenCV's image rendering
     facilities.
     :param interactive: Stop stream on ESC
-    :param cb_check_should_finish: Callable to control the stream
     """
 
     # Establish a connection w/ the camera.
