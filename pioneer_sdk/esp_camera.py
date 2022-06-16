@@ -12,6 +12,7 @@ import threading
 import socket
 import sys
 import time
+from dataclasses import dataclass, field
 
 
 class EspCamera:
@@ -68,34 +69,38 @@ class EspCamera:
         return self.__raw_video_frame
 
 
-def run_video_stream(interactive=False):
-    """
-    Continuously receives JPEG frames from ESP32, parses them, and renders it using standard OpenCV's image rendering
-    facilities.
-    :param interactive: Stop stream on ESC
-    """
 
-    # Establish a connection w/ the camera.
-    camera = EspCamera()
-    camera.connect()
+@dataclass
+class VideoStream:
+    camera: EspCamera = field(default_factory=EspCamera)
 
-    while True:
-        # Try to receive a frame
+    def run(self, interactive=False):
+        """
+        Continuously receives JPEG frames from ESP32, parses them, and renders it using standard OpenCV's image rendering
+        facilities.
+        :param interactive: Stop stream on ESC
+        """
 
-        camera_frame = camera.receive_frame()
+        # Establish a connection w/ the camera.
+        self.camera.connect()
 
-        if camera_frame is None:
-            continue
+        while True:
+            # Try to receive a frame
 
-        # Decode and render JPEG frame
-        camera_frame = cv2.imdecode(np.frombuffer(camera_frame, dtype=np.uint8), cv2.IMREAD_COLOR)
-        cv2.imshow('pioneer_camera_stream', camera_frame)
+            camera_frame = self.camera.receive_frame()
 
-        # ESC key terminates the stream
-        if interactive and cv2.waitKey(1) == 27:  # ESC
-            cv2.destroyAllWindows()
-            break
+            if camera_frame is None:
+                continue
+
+            # Decode and render JPEG frame
+            camera_frame = cv2.imdecode(np.frombuffer(camera_frame, dtype=np.uint8), cv2.IMREAD_COLOR)
+            cv2.imshow('pioneer_camera_stream', camera_frame)
+
+            # ESC key terminates the stream
+            if interactive and cv2.waitKey(1) == 27:  # ESC
+                cv2.destroyAllWindows()
+                break
 
 
 if __name__ == "__main__":
-    run_video_stream(True)
+    VideoStream().run(True)
