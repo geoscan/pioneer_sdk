@@ -68,6 +68,8 @@ class EspCamera:
                 self.__raw_video_frame = bytes()
         return self.__raw_video_frame
 
+    get_raw_video_frame = receive_frame  # For the purposes of partial backward compatibility
+
 
 @dataclass
 class VideoStream:
