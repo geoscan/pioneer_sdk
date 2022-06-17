@@ -104,3 +104,4 @@ class VideoStream:
 
 if __name__ == "__main__":
     VideoStream().run(True)
+
