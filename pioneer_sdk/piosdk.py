@@ -5,13 +5,12 @@ import threading
 import socket
 import sys
 import time
-import cv2
+import serial
 
 
 class Pioneer:
     def __init__(self, method=0, pioneer_ip='192.168.4.1', pioneer_mavlink_port=8001, device='/dev/serial0',
                  baud=115200, logger=True):
-        self.__VIDEO_BUFFER = 65535
 
         self.__heartbeat_send_delay = 0.25
         self.__ack_timeout = 1
@@ -62,32 +61,36 @@ class Pioneer:
                                     UavStartAllowed=None)
 
         if method == 0:
-            print('метод соединения', method)
+            if self.__logger:
+                print("Connection method", method)
             try:
-                print('соединение по wifi', pioneer_ip, pioneer_mavlink_port)
-                self.__mavlink_socket = mavutil.mavlink_connection('udpin:%s:%s' % (pioneer_ip, pioneer_mavlink_port))
+                if self.__logger:
+                    print("Connected through Wi-Fi as host to", pioneer_ip, pioneer_mavlink_port)
+                self.__mavlink_socket = mavutil.mavlink_connection("udpin:%s:%s" % (pioneer_ip, pioneer_mavlink_port))
             except socket.error:
-                print('Can not connect to pioneer. Do you connect to drone wifi?')
+                print("Can not connect to pioneer. Do you connect to drone wifi?")
                 sys.exit()
         elif method == 1:
-            print('метод соединения', method)
+            if self.__logger:
+                print("Connection method", method)
             try:
-                print('соединение по uart', device, baud)
+                print('Connected through UART to', device, baud)
                 self.__mavlink_socket = mavutil.mavlink_connection(device=device, baud=baud)
 
-            except socket.error:
-                print('serial error')
+            except serial.SerialException:
+                print('Serial error')
                 sys.exit()
         elif method == 2:
-            print('метод соединения', method)
+            if self.__logger:
+                print("Connection method", method)
             try:
-                print('соединение по wifi', pioneer_ip, pioneer_mavlink_port)
+                print("Connected through Wi-Fi as client to", pioneer_ip, pioneer_mavlink_port)
                 self.__mavlink_socket = mavutil.mavlink_connection('udpout:%s:%s' % (pioneer_ip, pioneer_mavlink_port))
             except socket.error:
                 print('Can not connect to pioneer. Do you connect to drone wifi?')
                 sys.exit()
         else:
-            print('Данный метод соединения не поддерживается')
+            print('Unsupported method was called')
 
         self.__init_heartbeat_event = threading.Event()
 
@@ -105,15 +108,15 @@ class Pioneer:
         self.__mavlink_socket.mav.heartbeat_send(mavutil.mavlink.MAV_TYPE_GCS,
                                                  mavutil.mavlink.MAV_AUTOPILOT_INVALID, 0, 0, 0)
         if self.__logger:
-            print('send heartbeat')
+            print('Send heartbeat')
 
     def __receive_heartbeat(self):
-        he = self.__mavlink_socket.recv_match(type="HEARTBEAT", blocking=True)
+        heartbeat = self.__mavlink_socket.recv_match(type="HEARTBEAT", blocking=True)
         try:
-            if he._header.srcComponent == 1:
-                custome_mode = he.custom_mode
-                custome_mode_bute = format(custome_mode, "032b")
-                status_autopilot = custome_mode_bute[24:]
+            if heartbeat._header.srcComponent == 1:
+                custom_mode = heartbeat.custom_mode
+                custom_mode_buf = format(custom_mode, "032b")
+                status_autopilot = custom_mode_buf[24:]
                 self.cur_state = self.autopilot_state[int(status_autopilot, 2)]
         except:
             pass
@@ -180,15 +183,18 @@ class Pioneer:
         else:
             return None, None
 
-    def poweroff(self):
+    def raspberry_poweroff(self):
+        """ Shutdown the raspberry pi """
         i = 0
+        n_attempts = 25
+        target_component = 42
         if self.__logger:
-            print('poweroff command send')
+            print('Raspberry poweroff command send')
         while True:
             self.__mavlink_socket.mav.command_long_send(
                 self.__mavlink_socket.target_system,  # target_system
-                self.__mavlink_socket.target_component,
-                mavutil.mavlink.MAV_CMD_USER_2,  # command
+                target_component,  # target_component
+                mavutil.mavlink.MAV_CMD_PREFLIGHT_REBOOT_SHUTDOWN,  # command
                 i,  # confirmation
                 0,  # param1
                 0,  # param2
@@ -199,28 +205,31 @@ class Pioneer:
                 0)  # param7
             ack = self.__get_ack()
             if ack is not None:
-                if ack[0] and ack[1] == mavutil.mavlink.MAV_CMD_USER_2:
+                if ack[0] and ack[1] == mavutil.mavlink.MAV_CMD_PREFLIGHT_REBOOT_SHUTDOWN:
                     if self.__logger:
-                        print('poweroff complete')
+                        print('Raspberry poweroff complete')
                     return True
                 else:
                     i += 1
-                    if i > 25:
+                    if i > n_attempts:
                         return False
             else:
                 i += 1
-                if i > 25:
+                if i > n_attempts:
                     return False
 
-    def reboot(self):
+    def raspberry_reboot(self):
+        """ Reboot the raspberry pi """
         i = 0
+        n_attempts = 25
+        target_component = 43
         if self.__logger:
-            print('reboot command send')
+            print('Raspberry reboot command send')
         while True:
             self.__mavlink_socket.mav.command_long_send(
                 self.__mavlink_socket.target_system,  # target_system
-                self.__mavlink_socket.target_component,
-                mavutil.mavlink.MAV_CMD_USER_4,  # command
+                target_component,  # target_component
+                mavutil.mavlink.MAV_CMD_PREFLIGHT_REBOOT_SHUTDOWN,  # command
                 i,  # confirmation
                 0,  # param1
                 0,  # param2
@@ -231,25 +240,27 @@ class Pioneer:
                 0)  # param7
             ack = self.__get_ack()
             if ack is not None:
-                if ack[0] and ack[1] == mavutil.mavlink.MAV_CMD_USER_4:
+                if ack[0] and ack[1] == mavutil.mavlink.MAV_CMD_PREFLIGHT_REBOOT_SHUTDOWN:
                     if self.__logger:
-                        print('reboot complete')
+                        print('Raspberry reboot complete')
                     return True
                 else:
                     i += 1
-                    if i > 25:
+                    if i > n_attempts:
                         return False
 
             else:
                 i += 1
-                if i > 25:
+                if i > n_attempts:
                     return False
 
     def arm(self):
+        """ Arming command for drone """
         try:
             i = 0
+            n_attempts = 15
             if self.__logger:
-                print('arm command send')
+                print('Arm command send')
             while True:
                 self.__mavlink_socket.mav.command_long_send(
                     self.__mavlink_socket.target_system,  # target_system
@@ -267,24 +278,26 @@ class Pioneer:
                 if ack is not None:
                     if ack[0] and ack[1] == mavutil.mavlink.MAV_CMD_COMPONENT_ARM_DISARM:
                         if self.__logger:
-                            print('arming complete')
+                            print('Arming complete')
                         return True
                     else:
                         i += 1
-                        if i > 15:
+                        if i > n_attempts:
                             return False
                 else:
                     i += 1
-                    if i > 15:
+                    if i > n_attempts:
                         return False
         except:
             pass
 
     def disarm(self):
+        """ Disarming command for drone """
         try:
             i = 0
+            n_attempts = 15
             if self.__logger:
-                print('disarm command send')
+                print('Disarm command send')
             while True:
                 self.__mavlink_socket.mav.command_long_send(
                     self.__mavlink_socket.target_system,  # target_system
@@ -302,23 +315,25 @@ class Pioneer:
                 if ack is not None:
                     if ack[0] and ack[1] == mavutil.mavlink.MAV_CMD_COMPONENT_ARM_DISARM:
                         if self.__logger:
-                            print('disarming complete')
+                            print('Disarming complete')
                         return True
                     else:
                         i += 1
-                        if i > 15:
+                        if i > n_attempts:
                             return False
                 else:
                     i += 1
-                    if i > 15:
+                    if i > n_attempts:
                         return False
         except:
             pass
 
     def takeoff(self):
+        """ Takeoff command for drone"""
         i = 0
+        n_attempts = 15
         if self.__logger:
-            print('takeoff command send')
+            print('Takeoff command send')
         while True:
             self.__mavlink_socket.mav.command_long_send(
                 self.__mavlink_socket.target_system,  # target_system
@@ -336,21 +351,23 @@ class Pioneer:
             if ack is not None:
                 if ack[0] and ack[1] == mavutil.mavlink.MAV_CMD_NAV_TAKEOFF:
                     if self.__logger:
-                        print('takeoff complete')
+                        print('Takeoff complete')
                     return True
                 else:
                     i += 1
-                    if i > 15:
+                    if i > n_attempts:
                         return False
             else:
                 i += 1
-                if i > 15:
+                if i > n_attempts:
                     return False
 
     def land(self):
+        """ Landing command for drone """
         i = 0
+        n_attempts = 15
         if self.__logger:
-            print('land command send')
+            print('Land command send')
         while True:
             self.__mavlink_socket.mav.command_long_send(
                 self.__mavlink_socket.target_system,  # target_system
@@ -368,26 +385,28 @@ class Pioneer:
             if ack is not None:
                 if ack[0] and ack[1] == mavutil.mavlink.MAV_CMD_NAV_LAND:
                     if self.__logger:
-                        print('landing complete')
+                        print('Landing complete')
                     return True
                 else:
                     i += 1
-                    if i > 15:
+                    if i > n_attempts:
                         return False
             else:
                 i += 1
-                if i > 15:
+                if i > n_attempts:
                     return False
 
     def reboot_board(self):
+        """ Restart the flight controller """
         try:
             i = 0
+            n_attempts = 255
             if self.__logger:
                 print('arm command send')
             while True:
                 self.__mavlink_socket.mav.command_long_send(
                     self.__mavlink_socket.target_system,  # target_system
-                    self.__mavlink_socket.target_component,
+                    1,
                     mavutil.mavlink.MAV_CMD_PREFLIGHT_REBOOT_SHUTDOWN,  # command
                     i,  # confirmation
                     1,  # param1
@@ -405,17 +424,19 @@ class Pioneer:
                         return True
                     else:
                         i += 1
-                        if i > 255:
+                        if i > n_attempts:
                             return False
                 else:
                     i += 1
-                    if i > 255:
+                    if i > n_attempts:
                         return False
         except:
             pass
 
     def lua_script_control(self, input_state='Stop'):
+        """ Start/stop loaded to board LUA script """
         i = 0
+        n_attempts = 25
         target_component = 25
         state = dict(Stop=0, Start=1)
         command = state.get(input_state)
@@ -443,22 +464,24 @@ class Pioneer:
                         return True
                     else:
                         i += 1
-                        if i > 25:
+                        if i > n_attempts:
                             return False
                 else:
                     i += 1
-                    if i > 25:
+                    if i > n_attempts:
                         return False
         else:
             if self.__logger:
                 print('wrong LUA command value')
 
     def led_control(self, led_id=255, r=0, g=0, b=0):  # 255 all led
+        """ Change LED color for device without raspberry pi"""
         max_value = 255.0
         all_led = 255
         first_led = 0
         last_led = 3
         i = 0
+        n_attempts = 25
         led_value = [r, g, b]
         command = True
 
@@ -502,22 +525,24 @@ class Pioneer:
                         return True
                     else:
                         i += 1
-                        if i > 25:
+                        if i > n_attempts:
                             return False
                 else:
                     i += 1
-                    if i > 25:
+                    if i > n_attempts:
                         return False
         else:
             if self.__logger:
                 print('wrong LED RGB values or id')
 
-    def led_custom(self, mode=1, timer=0, color1=(0, 0, 0), color2=(0, 0, 0)):
+    def raspberry_led_custom(self, mode=1, timer=0, color1=(0, 0, 0), color2=(0, 0, 0)):
+        """ Change LED color for device with raspberry pi"""
         param2 = (((color1[0] << 8) | color1[1]) << 8) | color1[2]
         param3 = (((color2[0] << 8) | color2[1]) << 8) | color2[2]
         param5 = mode
         param6 = timer
         i = 0
+        n_attempts = 25
         while True:
             self.__mavlink_socket.mav.command_long_send(
                 0,  # target_system
@@ -531,25 +556,27 @@ class Pioneer:
                 param5,  # param5
                 param6,  # param6
                 0)  # param7
+            if self.__logger:
+                print("Raspberry custom led sent message")
             ack = self.__get_ack()
             if ack is not None:
-                if ack[0] and ack[1] == mavutil.mavlink.MAV_CMD_USER_3:
+                if ack[0] and ack[1] == mavutil.mavlink.MAV_CMD_USER_2:
                     if self.__logger:
-                        print("Custom led sent message")
+                        print("Raspberry custom led complete")
                     return True
                 else:
                     i += 1
-                    if i > 25:
+                    if i > n_attempts:
                         return False
             else:
                 i += 1
-                if i > 25:
+                if i > n_attempts:
                     return False
 
     def go_to_local_point(self, x=None, y=None, z=None, vx=None, vy=None, vz=None, afx=None, afy=None, afz=None,
                           yaw=None, yaw_rate=None):
 
-        """ Полет в точку в коо-тах системы навигации """
+        """ Flight to point in position system's coordinate """
 
         ack_timeout = 0.1
         send_time = time.time()
@@ -564,7 +591,7 @@ class Pioneer:
                 parameters[n] = 0.0
             element_mask = element_mask << 1
         if self.__logger:
-            print('sending local point :', end=' ')
+            print('Sending local point :', end=' ')
             first_output = True
             for n, v in parameters.items():
                 if parameters[n] != 0.0:
@@ -595,9 +622,9 @@ class Pioneer:
             else:
                 return True
 
-    def go_to_local_point2(self, x=None, y=None, z=None, vx=0.3, vy=0.3, vz=0.8, afx=None, afy=None, afz=None,
-                           yaw=None, yaw_rate=0.5):
-        """ Полет в точку относительно текущей позиции """
+    def go_to_local_point_relatively(self, x=None, y=None, z=None, vx=0.3, vy=0.3, vz=0.8, afx=None, afy=None, afz=None,
+                                     yaw=None, yaw_rate=0.5):
+        """ Flight to point relative to the current position """
 
         ack_timeout = 0.1
         send_time = time.time()
@@ -612,7 +639,7 @@ class Pioneer:
                 parameters[n] = 0.0
             element_mask = element_mask << 1
         if self.__logger:
-            print('sending local point :', end=' ')
+            print('Sending relative local point :', end=' ')
             first_output = True
             for n, v in parameters.items():
                 if parameters[n] != 0.0:
@@ -644,7 +671,7 @@ class Pioneer:
                 return True
 
     def point_reached(self, blocking=False):
-        """ Возвращает True при достижении точки в автномном полете """
+        """ Callback of destination point in mission flight """
         point_reached = self.__mavlink_socket.recv_match(type='MISSION_ITEM_REACHED', blocking=blocking,
                                                          timeout=self.__ack_timeout)
         if not point_reached:
@@ -666,13 +693,13 @@ class Pioneer:
                 new_point = False
             if new_point:
                 if self.__logger:
-                    print("point reached, id: ", point_id)
+                    print("Point reached, id: ", point_id)
                 return True
             else:
                 return False
 
     def get_local_position_lps(self, blocking=False):
-        """ Возвращает данные от системы навигации LPS """
+        """ Returning position from LPS """
         position = self.__mavlink_socket.recv_match(type='LOCAL_POSITION_NED', blocking=blocking,
                                                     timeout=self.__ack_timeout)
         if not position:
@@ -688,7 +715,7 @@ class Pioneer:
                 return None
 
     def get_dist_sensor_data(self, blocking=False):
-        """ Возвращает данные с дальномера """
+        """ Returning altitude from TOF """
         dist_sensor_data = self.__mavlink_socket.recv_match(type='DISTANCE_SENSOR', blocking=blocking,
                                                             timeout=self.__ack_timeout)
         if not dist_sensor_data:
@@ -705,7 +732,7 @@ class Pioneer:
             return curr_distance
 
     def get_optical_data(self, blocking=False):
-        """ Возвращает данные от системы навигации OPT """
+        """ Returning data from OPT """
         optical_data = self.__mavlink_socket.recv_match(type='OPTICAL_FLOW_RAD', blocking=blocking,
                                                         timeout=self.__ack_timeout)
         if not optical_data:
@@ -719,7 +746,7 @@ class Pioneer:
             return optical_data
 
     def get_battery_status(self, blocking=False):
-        """ Возвращает заряд батареи """
+        """ Returning battery remaining voltage """
         bat_state = self.__mavlink_socket.recv_match(type='BATTERY_STATUS', blocking=blocking,
                                                      timeout=self.__ack_timeout)
         if bat_state is None:
@@ -736,14 +763,12 @@ class Pioneer:
             return voltage
 
     def get_preflight_state(self, field):
-        if field in self.preflight_state.keys():
-            return self.preflight_state.get(field)
-        else:
-            return None
+        return self.preflight_state
 
     def get_autopilot_version(self):
-        """ Возвращает версию автопилота """
+        """ Returning autopilot version """
         i = 0
+        n_attempts = 15
         while True:
             self.__mavlink_socket.mav.command_long_send(
                 self.__mavlink_socket.target_system,  # target_system
@@ -762,7 +787,7 @@ class Pioneer:
 
             if ap_ver is None:
                 i += 1
-                if i > 15:
+                if i > n_attempts:
                     return None
                 else:
                     continue
@@ -771,12 +796,10 @@ class Pioneer:
                     return [ap_ver.flight_sw_version, ap_ver.board_version, ap_ver.flight_custom_version]
                 else:
                     i += 1
-                    if i > 15:
+                    if i > n_attempts:
                         return None
 
     def __ack_receive_point(self, blocking=False, timeout=None):
-        """ Возвращает точку, в которую летит кооптер при автономном полете """
-
         if timeout is None:
             timeout = self.__ack_timeout
         ack = self.__mavlink_socket.recv_match(type='POSITION_TARGET_LOCAL_NED', blocking=blocking,
@@ -794,11 +817,11 @@ class Pioneer:
 
     def send_rc_channels(self, channel_1=0xFF, channel_2=0xFF, channel_3=0xFF, channel_4=0xFF,
                          channel_5=0xFF, channel_6=0xFF, channel_7=0xFF, channel_8=0xFF):
-        """ Отправка сигнала пульта """
-        # channel_1 = изменение значения throttle
-        # channel_2 = изменение значения yaw
-        # channel_3 = изменение значения pitch
-        # channel_4 = изменение значения roll
+        """ RC unit signal send to drone """
+        # channel_1 = throttle channel value
+        # channel_2 = yaw channel value
+        # channel_3 = pitch channel value
+        # channel_4 = roll channel value
         # channel_5 = mode. 2000 - program
 
         self.__mavlink_socket.mav.rc_channels_override_send(self.__mavlink_socket.target_system,
@@ -806,16 +829,17 @@ class Pioneer:
                                                             channel_2, channel_3, channel_4, channel_5, channel_6,
                                                             channel_7, channel_8)
 
-    def start_capture(self, interval=0.1, total_images=0, sequence_number=0):
-        """ Начало съемки камерой """
-        # param2 interval - время в секундах между снимками
-        # param3 total_images - кол-во изобрадений для захвата. 0 = делать снимки до команды остановки (вызова stop_capture)
-        # param4 sequence_number - используется если total_images = 1, в противном случае  = 0
+    def raspberry_start_capture(self, interval=0.1, total_images=0, sequence_number=0):
+        """ Raspberry pi camera start capturing """
+        # param2 interval - delay between each frame
+        # param3 total_images - number of images to capture. 0 = do capture till stop_capture is called
+        # param4 sequence_number - if total_images = 1 increment after each frame, else use 0
 
         try:
             i = 0
+            n_attempts = 15
             if self.__logger:
-                print('start_capture send')
+                print('Raspberry pi camera start_capture send')
 
             while True:
                 self.__mavlink_socket.mav.command_long_send(
@@ -835,26 +859,27 @@ class Pioneer:
                 if ack is not None:
                     if ack[0] and ack[1] == mavutil.mavlink.MAV_CMD_IMAGE_START_CAPTURE:
                         if self.__logger:
-                            print('start_capture complete, iter:', i)
+                            print('Raspberry pi camera start_capture complete, iter:', i)
                         return True
                     else:
                         i += 1
-                        if i > 15:
+                        if i > n_attempts:
                             return False
                 else:
                     i += 1
-                    if i > 15:
+                    if i > n_attempts:
                         return False
         except:
             pass
 
-    def stop_capture(self):
-        """ Конец съемки камерой """
+    def raspberry_stop_capture(self):
+        """ End of Raspberry pi capture """
 
         try:
             i = 0
+            n_attempts = 15
             if self.__logger:
-                print('start_capture send')
+                print('Raspberry pi stop_capture send')
 
             while True:
                 self.__mavlink_socket.mav.command_long_send(
@@ -874,36 +899,32 @@ class Pioneer:
                 if ack is not None:
                     if ack[0] and ack[1] == mavutil.mavlink.MAV_CMD_IMAGE_STOP_CAPTURE:
                         if self.__logger:
-                            print('stop_capture complete, iter:', i)
+                            print('Raspberry pi camera stop_capture complete, iter:', i)
                         return True
                     else:
                         i += 1
-                        if i > 15:
+                        if i > n_attempts:
                             return False
                 else:
                     i += 1
-                    if i > 15:
+                    if i > n_attempts:
                         return False
         except:
             pass
 
     def mission_flights(self, mission_file=None, start_event=None, finish_event=None, callback=None):
-        """ Автоматический полет по точкам """
+        """ Autonomous flight by mission """
 
-        # mission_file - файл с точками полета
-        # start_event \ finish_event - функции которые будут вызваны до начала полета и в конце
-        # callback - вызывается после достижения каждой точки
-
-        def readCongif(path):
-            with open(path, encoding='utf-8') as read_file:
-                config = json.load(read_file)
-            return config
+        # mission_file - mission plan with points
+        # start_event \ finish_event - callbacks for begining/ending of flight
+        # callback - raises on every point reaching
 
         if mission_file is None:
-            print('Отсутствует полетное задание')
+            print('Mission flight is missed')
             return
         elif type(mission_file) == str:
-            mission_file = readCongif(mission_file)
+            with open(mission_file, encoding='utf-8') as read_file:
+                mission_file = json.load(read_file)
 
         points = []
         try:
@@ -935,7 +956,8 @@ class Pioneer:
                     callback()
 
                 current_point = points.pop(0)
-                self.go_to_local_point(x=current_point['x'], y=current_point['y'] * -1, z=current_point['z'] * -1 + 1, yaw=0,
+                self.go_to_local_point(x=current_point['x'], y=current_point['y'] * -1, z=current_point['z'] * -1 + 1,
+                                       yaw=0,
                                        vx=0.1, vy=0.1, vz=0.1)
             time.sleep(0.1)
 
@@ -943,4 +965,3 @@ class Pioneer:
             finish_event()
 
         self.land()
-
