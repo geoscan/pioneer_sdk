@@ -12,7 +12,6 @@ import threading
 import socket
 import sys
 import time
-from dataclasses import dataclass, field
 
 
 class EspCamera:
@@ -71,9 +70,9 @@ class EspCamera:
     get_raw_video_frame = receive_frame  # For the purposes of partial backward compatibility
 
 
-@dataclass
 class VideoStream:
-    camera: EspCamera = field(default_factory=EspCamera)
+    def __init__(self):
+        self.camera = EspCamera()
 
     def run(self, interactive=False):
         """
