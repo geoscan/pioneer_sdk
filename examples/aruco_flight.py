@@ -1,4 +1,5 @@
 from pioneer_sdk import Pioneer
+from pioneer_sdk.esp_camera import EspCamera
 import os
 import sys
 import math
@@ -119,9 +120,10 @@ if __name__ == '__main__':
     pioneer_mini = manager.Pioneer()
     pioneer_mini.arm()
     pioneer_mini.takeoff()
+    esp_camera = EspCamera()
 
     buffer = mp.Queue(maxsize=1)
-    pos_and_orient = mp.Process(target=image_proc, args=(buffer, pioneer_mini, mtx, dist))
+    pos_and_orient = mp.Process(target=image_proc, args=(buffer, esp_camera, mtx, dist))
     drone_flight = mp.Process(target=drone_control, args=(buffer, pioneer_mini))
     pos_and_orient.start()
     drone_flight.start()
