@@ -15,11 +15,8 @@ class Pioneer:
         self.__heartbeat_send_delay = 0.25
         self.__ack_timeout = 1
         self.__logger = logger
-
         self.__prev_point_id = None
-
         self.__mavlink_socket = None
-
         self.t_start = time.time()
 
         self.autopilot_state = {
@@ -575,8 +572,7 @@ class Pioneer:
 
     def go_to_local_point(self, x=None, y=None, z=None, vx=None, vy=None, vz=None, afx=None, afy=None, afz=None,
                           yaw=None, yaw_rate=None):
-
-        """ Flight to point in position system's coordinate """
+        """ Flight to point in the current navigation system's coordinate frame """
 
         ack_timeout = 0.1
         send_time = time.time()
