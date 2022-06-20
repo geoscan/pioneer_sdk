@@ -20,11 +20,14 @@ class EspCamera:
     TCP_PORT = 8888  # ESP32 listens on TCP/8888. On an incoming connection, it accepts it and starts sending UDP packets to the client's UDP port w/ the same port number
     VIDEO_BUFFER_SIZE = 4 * 20 * 1024  # The expected frame size is about 15k. Double of that storage w/ a bit of slack is supposed to fullfill our needs.
 
-    def __init__(self):
+    def __init__(self, autoconnect=True):
         self.__video_socket = None
         self.__video_control_socket = None
         self.__raw_video_frame = 0
         self.__video_frame_buffer = bytes()
+
+        if autoconnect:
+            self.connect()
 
     def connect(self):
         """
