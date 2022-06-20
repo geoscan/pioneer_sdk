@@ -1,4 +1,5 @@
 -r install_requirements.txt
+pyserial
 future==0.18.2
 lxml==4.6.2
 numpy==1.19.5
