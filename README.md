@@ -1,3 +1,9 @@
+# Geoscan `pioneer_sdk`
+
+Geoscan PioneerSDK is a collection of tools for interfacing with Geoscan Pioneer UAVs.
+It provides a succinct and convenient API to drones' functions such as autonomous flight, acquiring frames from a drone's camera, and more.
+Please feel free to exlore `examples/` directory for stepping stones and inspiration.
+
 ## Installation
 
 Use the package manager [pip](https://pip.pypa.io/en/stable/) to install pioneer_sdk.
