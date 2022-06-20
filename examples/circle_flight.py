@@ -1,4 +1,5 @@
 from pioneer_sdk import Pioneer
+from pioneer_sdk.esp_camera import EspCamera
 import cv2
 import math
 import numpy as np
@@ -22,8 +23,9 @@ if __name__ == '__main__':
     pioneer_mini = Pioneer()
     pioneer_mini.arm()
     pioneer_mini.takeoff()
+    esp_camera = EspCamera()
     while True:
-        camera_frame = cv2.imdecode(np.frombuffer(pioneer_mini.get_raw_video_frame(), dtype=np.uint8), cv2.IMREAD_COLOR)
+        camera_frame = cv2.imdecode(np.frombuffer(esp_camera.get_raw_video_frame(), dtype=np.uint8), cv2.IMREAD_COLOR)
         cv2.imshow('pioneer_camera_stream', camera_frame)
 
         if new_point:
