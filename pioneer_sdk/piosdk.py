@@ -8,6 +8,84 @@ import time
 import serial
 
 
+class MavlinkConnectionFactory:
+
+    @staticmethod
+    def _make_connected_udp(ip, port, logger, instantiation_type):
+        """
+        Establish MAVLink connection over UDP
+
+        :param ip: Ip of a remote UDP endpoint
+        :param port: Port of a remote UDP endpoint
+        :param logger: Whether to log the process
+        :param instantiate: `pymavlink` establishes a differentiation b/w `udpout` and` udpin` connection method.
+         XXX: Presumably, they differ in whether or not a test heartbeat message will be sent after connection.
+        :return: "MAVLink connection" object
+        """
+
+        assert instantiation_type in ["udpin", "udpout"]
+
+        if logger:
+            print("Trying to establish MAVLink connection over UDP %s:%d" % (ip, port,))
+
+        try:
+            mavlink_connection = mavutil.mavlink_connection("%s:%s:%s" % (instantiation_type, ip, port))
+
+            if logger:
+                print("Connected through Wi-Fi as host to ", ip, ":", port)
+        except socket.error:
+            print("Can not connect to pioneer. Do you connect to drone wifi?")
+            sys.exit()
+
+        return mavlink_connection
+
+    @staticmethod
+    def make_connected_udp_instantiate(ip="192.168.4.1", port=8001, logger=True):
+        """
+        Create and initiate MAVLink connection using a UDP port
+
+        :param ip: Ip of a remote UDP endpoint
+        :param port: Port of a remote UDP endpoint
+        :param logger: Whether to log the process
+        :return: "MAVLink connection" object
+        """
+        return MavlinkConnectionFactory._make_connected_udp(ip, port, logger, "udpout")
+
+    @staticmethod
+    def make_connected_udp_listen(ip="192.168.4.1", port=8001, logger=True):
+        """
+        Wait for MAVLink connection using a "listening" UDP port
+
+        :param ip: Ip of a remote UDP endpoint
+        :param port: Port of a remote UDP endpoint
+        :param logger: Whether to log the process
+        :return: "MAVLink connection" object
+        """
+        return MavlinkConnectionFactory._make_connected_udp(ip, port, logger, "udpin")
+
+    @staticmethod
+    def make_connected_serial(device, baud=115200, logger=True):
+        """
+        Establish MAVLink connection over serial interface.
+
+        :param device: Device file (e.g. `COM` on Windows, or `/dev/tty...` on Linux)
+        :param baud: Baudrate used by the channel
+        :param logger: Whether to log the process
+        :return: "MAVLink connection" object
+        """
+        if logger:
+            print("Trying to establish MAVLink connection over serial device")
+
+        try:
+            mavlink_connection = mavutil.mavlink_connection(device=device, baud=baud)
+            print('Connected through serial device to', device, " w/ baudrate ", baud)
+        except serial.SerialException:
+            print('Serial error')
+            sys.exit()
+
+        return mavlink_connection
+
+
 class Pioneer:
     def __init__(self, method=0, pioneer_ip='192.168.4.1', pioneer_mavlink_port=8001, device='/dev/serial0',
                  baud=115200, logger=True):
