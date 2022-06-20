@@ -1,10 +1,16 @@
 from setuptools import setup
+
+with open("README.md", "r", encoding="utf-8") as fh:
+  long_description = fh.read()
+
 setup(
   name='pioneer_sdk',
   packages=['pioneer_sdk'],
   version='0.2.6',
   license='MIT',
   description='Programming tools for programming geoscan pioneer drone',
+  long_description=long_description,
+  long_description_content_type="text/markdown",
   author='geoscan',
   author_email='info@geoscan.aero',
   url='https://github.com/geoscan/pioneer_sdk',
