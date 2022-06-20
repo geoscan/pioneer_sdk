@@ -622,7 +622,7 @@ class Pioneer:
             else:
                 return True
 
-    def go_to_local_point_relatively(self, x=None, y=None, z=None, vx=0.3, vy=0.3, vz=0.8, afx=None, afy=None, afz=None,
+    def go_to_local_point_body_fixed(self, x=None, y=None, z=None, vx=0.3, vy=0.3, vz=0.8, afx=None, afy=None, afz=None,
                                      yaw=None, yaw_rate=0.5):
         """ Flight to point relative to the current position """
 
