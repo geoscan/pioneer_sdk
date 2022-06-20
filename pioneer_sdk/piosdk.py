@@ -19,7 +19,7 @@ class MavlinkConnectionFactory:
         :param port: Port of a remote UDP endpoint
         :param logger: Whether to log the process
         :param instantiate: `pymavlink` establishes a differentiation b/w `udpout` and` udpin` connection method.
-         XXX: Presumably, they differ in whether or not a test heartbeat message will be sent after connection.
+         XXX: Presumably, they differ in whether or not a test heartbeat message will is sent after connection.
         :return: "MAVLink connection" object
         """
 
