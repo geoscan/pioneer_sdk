@@ -18,14 +18,15 @@ if __name__ == '__main__':
 
 ## Documentation
 
-You can read information about package in the documentation page 
+You can read information about package in the documentation page
 [readthedocs](https://pioneer-doc.readthedocs.io/ru/master/programming/python/python_main.html)
 
 ## Additional information
 
 You can find the examples and the camera calibration script in the homonymous folders.
-To satisfy requiremets for them you can use requirements.txt file and install them by 
-[pip](https://pip.pypa.io/en/stable/): 
+Unlike "bare" `pioneer_sdk`, they require a broader set of dependencies.
+To satisfy the requirements, run:
+[pip](https://pip.pypa.io/en/stable/):
 ```bash
 python3 -m pip install -r requirements.txt
 ```
