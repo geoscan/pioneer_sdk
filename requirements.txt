@@ -2,6 +2,7 @@
 future==0.18.2
 lxml==4.6.2
 numpy==1.19.5
+scikit-build
 opencv-contrib-python==4.5.1.48
 pymavlink==2.4.14
 PyYAML==5.3.1
