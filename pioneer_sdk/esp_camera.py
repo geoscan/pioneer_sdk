@@ -4,14 +4,9 @@ use of two sockets (TCP and UDP). This module encapsulates the complexity, namel
 parsing incoming JPEG frames.
 """
 
-import socket
 import cv2
 import numpy as np
-from pymavlink import mavutil
-import threading
 import socket
-import sys
-import time
 
 
 class EspCamera:
