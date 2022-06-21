@@ -648,7 +648,7 @@ class Pioneer:
         mask = 0b0000101111111000
         x, y, z = y, x, -z  # ENU coordinates to NED coordinates
         if self.__logger:
-            print(f"Sending local point {{x: {x}, y: {y}, z{z}, yaw: {yaw}}}")
+            print(f"Sending body-fixed local point {{x: {x}, y: {y}, z{z}, yaw: {yaw}}}")
         counter = 1
         while True:
             if not self.__ack_receive_point():
@@ -682,7 +682,7 @@ class Pioneer:
         """ Set manual speed """
         mask = 0b0000011111000111
         if self.__logger:
-            print(f"Set manual speed {{vx: {vx}, vy: {vy}, z{vz}, yaw_rate: {yaw_rate}}}")
+            print(f"Set body-fixed manual speed {{vx: {vx}, vy: {vy}, z{vz}, yaw_rate: {yaw_rate}}}")
         vx, vy, vz = vy, vx, -vz  # ENU coordinates to NED coordinates
         self.__mavlink_socket.mav.set_position_target_local_ned_send(0,  # time_boot_ms
                                                                      self.__mavlink_socket.target_system,
