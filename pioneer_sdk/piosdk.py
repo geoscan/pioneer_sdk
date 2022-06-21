@@ -619,6 +619,7 @@ class Pioneer:
         """ Flight to point in the current navigation system's coordinate frame """
 
         ack_timeout = 0.1
+        n_attempts = 25
         send_time = time.time()
         mask = 0b0000101111111000
         x, y, z = y, x, -z  # ENU coordinates to NED coordinates
@@ -635,7 +636,7 @@ class Pioneer:
                                                                                  mavutil.mavlink.MAV_FRAME_LOCAL_NED,
                                                                                  mask, x, y, z, 0, 0, 0, 0, 0, 0, yaw, 0)
                     send_time = time.time()
-                if counter > 25:
+                if counter > n_attempts:
                     return False
             else:
                 return True
@@ -644,6 +645,7 @@ class Pioneer:
         """ Flight to point relative to the current position """
 
         ack_timeout = 0.1
+        n_attempts = 25
         send_time = time.time()
         mask = 0b0000101111111000
         x, y, z = y, x, -z  # ENU coordinates to NED coordinates
@@ -660,7 +662,7 @@ class Pioneer:
                                                                                  mavutil.mavlink.MAV_FRAME_BODY_FRD,
                                                                                  mask, x, y, z, 0, 0, 0, 0, 0, 0, yaw, 0)
                     send_time = time.time()
-                if counter > 25:
+                if counter > n_attempts:
                     return False
             else:
                 return True
