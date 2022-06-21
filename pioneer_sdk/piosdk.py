@@ -615,33 +615,16 @@ class Pioneer:
                 if i > n_attempts:
                     return False
 
-    def go_to_local_point(self, x=None, y=None, z=None, vx=None, vy=None, vz=None, afx=None, afy=None, afz=None,
-                          yaw=None, yaw_rate=None):
+    def go_to_local_point(self, x, y, z, yaw):
         """ Flight to point in the current navigation system's coordinate frame """
 
         ack_timeout = 0.1
+        n_attempts = 25
         send_time = time.time()
-        parameters = dict(x=x, y=y, z=z, vx=vx, vy=vy, vz=vz, afx=afx, afy=afy, afz=afz, force_set=0, yaw=yaw,
-                          yaw_rate=yaw_rate)  # 0-force_set
-        mask = 0b0000111111111111
-        element_mask = 0b0000000000000001
-        for n, v in parameters.items():
-            if v is not None:
-                mask = mask ^ element_mask
-            else:
-                parameters[n] = 0.0
-            element_mask = element_mask << 1
+        mask = 0b0000101111111000
+        x, y, z = y, x, -z  # ENU coordinates to NED coordinates
         if self.__logger:
-            print('Sending local point :', end=' ')
-            first_output = True
-            for n, v in parameters.items():
-                if parameters[n] != 0.0:
-                    if first_output:
-                        print(n, ' = ', v, sep="", end='')
-                        first_output = False
-                    else:
-                        print(', ', n, ' = ', v, sep="", end='')
-            print(end='\n')
+            print(f"Sending local point {{x: {x}, y: {y}, z{z}, yaw: {yaw}}}")
         counter = 1
         while True:
             if not self.__ack_receive_point():
@@ -651,45 +634,23 @@ class Pioneer:
                                                                                  self.__mavlink_socket.target_system,
                                                                                  self.__mavlink_socket.target_component,
                                                                                  mavutil.mavlink.MAV_FRAME_LOCAL_NED,
-                                                                                 mask, parameters['x'], parameters['y'],
-                                                                                 parameters['z'], parameters['vx'],
-                                                                                 parameters['vy'], parameters['vz'],
-                                                                                 parameters['afx'], parameters['afy'],
-                                                                                 parameters['afz'], parameters['yaw'],
-                                                                                 parameters['yaw_rate'])
+                                                                                 mask, x, y, z, 0, 0, 0, 0, 0, 0, yaw, 0)
                     send_time = time.time()
-                if counter > 25:
+                if counter > n_attempts:
                     return False
             else:
                 return True
 
-    def go_to_local_point_body_fixed(self, x=None, y=None, z=None, vx=0.3, vy=0.3, vz=0.8, afx=None, afy=None, afz=None,
-                                     yaw=None, yaw_rate=0.5):
+    def go_to_local_point_body_fixed(self, x, y, z, yaw):
         """ Flight to point relative to the current position """
 
         ack_timeout = 0.1
+        n_attempts = 25
         send_time = time.time()
-        parameters = dict(x=x, y=y, z=z, vx=vx, vy=vy, vz=vz, afx=afx, afy=afy, afz=afz, force_set=0, yaw=yaw,
-                          yaw_rate=yaw_rate)  # 0-force_set
-        mask = 0b0000111111111111
-        element_mask = 0b0000000000000001
-        for n, v in parameters.items():
-            if v is not None:
-                mask = mask ^ element_mask
-            else:
-                parameters[n] = 0.0
-            element_mask = element_mask << 1
+        mask = 0b0000101111111000
+        x, y, z = y, x, -z  # ENU coordinates to NED coordinates
         if self.__logger:
-            print('Sending relative local point :', end=' ')
-            first_output = True
-            for n, v in parameters.items():
-                if parameters[n] != 0.0:
-                    if first_output:
-                        print(n, ' = ', v, sep="", end='')
-                        first_output = False
-                    else:
-                        print(', ', n, ' = ', v, sep="", end='')
-            print(end='\n')
+            print(f"Sending body-fixed local point {{x: {x}, y: {y}, z{z}, yaw: {yaw}}}")
         counter = 1
         while True:
             if not self.__ack_receive_point():
@@ -699,17 +660,38 @@ class Pioneer:
                                                                                  self.__mavlink_socket.target_system,
                                                                                  self.__mavlink_socket.target_component,
                                                                                  mavutil.mavlink.MAV_FRAME_BODY_FRD,
-                                                                                 mask, parameters['x'], parameters['y'],
-                                                                                 parameters['z'], parameters['vx'],
-                                                                                 parameters['vy'], parameters['vz'],
-                                                                                 parameters['afx'], parameters['afy'],
-                                                                                 parameters['afz'], parameters['yaw'],
-                                                                                 parameters['yaw_rate'])
+                                                                                 mask, x, y, z, 0, 0, 0, 0, 0, 0, yaw, 0)
                     send_time = time.time()
-                if counter > 25:
+                if counter > n_attempts:
                     return False
             else:
                 return True
+
+    def set_manual_speed(self, vx, vy, vz, yaw_rate):
+        """ Set manual speed """
+        mask = 0b0000011111000111
+        if self.__logger:
+            print(f"Set manual speed {{vx: {vx}, vy: {vy}, z{vz}, yaw_rate: {yaw_rate}}}")
+        vx, vy, vz = vy, vx, -vz  # ENU coordinates to NED coordinates
+        self.__mavlink_socket.mav.set_position_target_local_ned_send(0,  # time_boot_ms
+                                                                     self.__mavlink_socket.target_system,
+                                                                     self.__mavlink_socket.target_component,
+                                                                     mavutil.mavlink.MAV_FRAME_LOCAL_NED,
+                                                                     mask, 0, 0, 0, vx, vy, vz, 0, 0, 0, 0, yaw_rate)
+        return True
+
+    def set_manual_speed_body_fixed(self, vx, vy, vz, yaw_rate):
+        """ Set manual speed in an external coordinate frame (that of a currently used local navigation system) """
+        mask = 0b0000011111000111
+        if self.__logger:
+            print(f"Set body-fixed manual speed {{vx: {vx}, vy: {vy}, z{vz}, yaw_rate: {yaw_rate}}}")
+        vx, vy, vz = vy, vx, -vz  # ENU coordinates to NED coordinates
+        self.__mavlink_socket.mav.set_position_target_local_ned_send(0,  # time_boot_ms
+                                                                     self.__mavlink_socket.target_system,
+                                                                     self.__mavlink_socket.target_component,
+                                                                     mavutil.mavlink.MAV_FRAME_BODY_FRD,
+                                                                     mask, 0, 0, 0, vx, vy, vz, 0, 0, 0, 0, yaw_rate)
+        return True
 
     def point_reached(self, blocking=False):
         """ Callback of destination point in mission flight """
