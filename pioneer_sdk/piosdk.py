@@ -679,7 +679,7 @@ class Pioneer:
         return True
 
     def set_manual_speed_body_fixed(self, vx, vy, vz, yaw_rate):
-        """ Set manual speed """
+        """ Set manual speed in an external coordinate frame (that of a currently used local navigation system) """
         mask = 0b0000011111000111
         if self.__logger:
             print(f"Set body-fixed manual speed {{vx: {vx}, vy: {vy}, z{vz}, yaw_rate: {yaw_rate}}}")
