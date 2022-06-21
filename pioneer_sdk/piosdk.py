@@ -678,6 +678,19 @@ class Pioneer:
                                                                      mask, 0, 0, 0, vx, vy, vz, 0, 0, 0, 0, yaw_rate)
         return True
 
+    def set_manual_speed_body_fixed(self, vx, vy, vz, yaw_rate):
+        """ Set manual speed """
+        mask = 0b0000011111000111
+        if self.__logger:
+            print(f"Set manual speed {{vx: {vx}, vy: {vy}, z{vz}, yaw_rate: {yaw_rate}}}")
+        vx, vy, vz = vy, vx, -vz  # ENU coordinates to NED coordinates
+        self.__mavlink_socket.mav.set_position_target_local_ned_send(0,  # time_boot_ms
+                                                                     self.__mavlink_socket.target_system,
+                                                                     self.__mavlink_socket.target_component,
+                                                                     mavutil.mavlink.MAV_FRAME_BODY_FRD,
+                                                                     mask, 0, 0, 0, vx, vy, vz, 0, 0, 0, 0, yaw_rate)
+        return True
+
     def point_reached(self, blocking=False):
         """ Callback of destination point in mission flight """
         point_reached = self.__mavlink_socket.recv_match(type='MISSION_ITEM_REACHED', blocking=blocking,
