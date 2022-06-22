@@ -9,8 +9,6 @@ from generic import Logging
 
 
 TARGET_NETWORK = 0
-SYSID = 1
-COMPID = 1
 RECV_TIMEOUT_SEC = 2
 
 
@@ -194,16 +192,25 @@ class Ftp:
 	SIZE_LIST_RESPONSE_RE = r'(-?[0-9]+)'
 	LIST_RESPONSE_RE = TYPE_LIST_RESPONSE_RE + NAME_LIST_RESPONSE_RE + r'\t' + SIZE_LIST_RESPONSE_RE + r'\0'
 
-	def __init__(self, connection):
+	def __init__(self, connection, target_network=0):
+		"""
+		:param connection: MAVLink connection instance
+		:param sysid:  target component id
+		:param compid: target system id
+		:param target_network: target network (see description for MAVLink FTP subprotocol)
+		"""
+
 		self.connection = connection
 		self.seq = 0
+		self.target_network = target_network
 
 	def send(self, payload):
 		payload.seq = self.seq
 
 		Logging.debug(__file__, Ftp, Ftp.send, "Sending payload: ", str(payload))
 
-		self.connection.mav.file_transfer_protocol_send(TARGET_NETWORK, SYSID, COMPID, payload.pack())
+		self.connection.mav.file_transfer_protocol_send(self.target_network, self.connection.target_system,
+			self.connection.target_component, payload.pack())
 
 	def receive(self):
 		"""
@@ -495,8 +502,8 @@ class FtpWrapper:
 	N_RECEIVE_ATTEMPTS = 2
 	CHUNK_SIZE = 100
 
-	def __init__(self, mavlink_connection):
-		self.ftp = Ftp(mavlink_connection)
+	def __init__(self, mavlink_connection, target_network=0):
+		self.ftp = Ftp(mavlink_connection, target_network)
 
 	@staticmethod
 	def _try_receive(callable, *args, **kwargs):
