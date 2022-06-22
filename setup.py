@@ -20,6 +20,7 @@ setup(
   setup_requires=['wheel'],
   install_requires=[
           'pymavlink',
+          'pyserial',
       ],
   classifiers=[
     "Programming Language :: Python :: 3",
