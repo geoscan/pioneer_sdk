@@ -121,9 +121,9 @@ class FtpPayload:
 		ret = FtpPayload(*ret)
 
 		if ret.size != len(ret.payload):
-			Logging.get_logger().error(Logging.format(__file__, FtpPayload, FtpPayload.construct_from_bytes,
+			Logging.error(__file__, FtpPayload, FtpPayload.construct_from_bytes,
 				"declared payload size and length of the payload don't match.", "Declared size:", ret.size,
-				"The actual payload's length:", len(ret.payload), topics=["serialization"]))
+				"The actual payload's length:", len(ret.payload), topics=["serialization"])
 
 		return ret
 
@@ -201,7 +201,7 @@ class Ftp:
 	def send(self, payload):
 		payload.seq = self.seq
 
-		Logging.get_logger().debug(Logging.format(__file__, Ftp, Ftp.send, "Sending payload: ", str(payload)))
+		Logging.debug(__file__, Ftp, Ftp.send, "Sending payload: ", str(payload))
 
 		self.connection.mav.file_transfer_protocol_send(TARGET_NETWORK, SYSID, COMPID, payload.pack())
 
@@ -216,7 +216,7 @@ class Ftp:
 		msg = self.connection.recv_match(type="FILE_TRANSFER_PROTOCOL", blocking=True, timeout=RECV_TIMEOUT_SEC)
 
 		if not msg:
-			Logging.get_logger().info(Logging.format(__file__, Ftp, Ftp.receive, "failed to receive", topics=['Conn']))
+			Logging.warning(__file__, Ftp, Ftp.receive, "failed to receive", topics=['Conn'])
 			return None
 
 		return msg
@@ -233,14 +233,13 @@ class Ftp:
 		payload = FtpPayload.construct_from_bytes(msg.payload)
 
 		if payload.seq != self.seq:
-			Logging.get_logger().info(Logging.format(__file__, Ftp, Ftp.receive_payload,
+			Logging.info(__file__, Ftp, Ftp.receive_payload,
 				"Got payload, but `seq` fields don't match", "current seq:", self.seq, "received payload:",
-				str(payload), topics=["conn"]))
+				str(payload), topics=["conn"])
 
 			return None
 
-		Logging.get_logger().debug(Logging.format(__file__, Ftp, Ftp.receive_payload,
-			"Received payload:", str(payload)))
+		Logging.debug(__file__, Ftp, Ftp.receive_payload, "Received payload:", str(payload))
 
 		return payload
 
