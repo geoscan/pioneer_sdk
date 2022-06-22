@@ -1,9 +1,9 @@
 -- This script serves the demonstration of a "compile/upload" functionality
 -- implemented w/ use of MAVLink FTP subprotocol running on both UAV and
--- client sides. If the attempt has been successful (it may not be the case
+-- client sides. In the case of a successful attemp (it may not be the case
 -- if you use incorrect parameters, or an outdated version of the UAV's
--- firmware), the demo script will compile, upload, and launch this Lua script.
--- As a result, the copter will make a short blink.
+-- firmware), the demo script will compile, upload, launch this Lua script,
+-- and as a result, the copter will make a short blink.
 --
 -- Please make sure that you use a battery, as USB power supply may not
 -- be sufficient for LEDs.
