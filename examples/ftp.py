@@ -3,9 +3,6 @@ Demonstration of file exchange operations implemented over MAVLink FTP subprotoc
 """
 
 import pathlib, sys, os, time
-
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
-
 from pioneer_sdk.mavsub import ftp as mavftp
 from pioneer_sdk.piosdk import MavlinkConnectionFactory, Pioneer
 
