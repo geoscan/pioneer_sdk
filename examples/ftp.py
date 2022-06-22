@@ -1,0 +1,58 @@
+"""
+Demonstration of file exchange operations using MAVLink FTP subprotocol.
+"""
+
+import pathlib, sys, os
+
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
+
+from pioneer_sdk.mavsub import ftp as mavftp
+from pioneer_sdk.piosdk import MavlinkConnectionFactory
+
+
+def lua_compile(lua_source) -> str:
+    """ Compiles a binary from Lua source file """
+
+    tool = pathlib.Path(__file__).resolve().parent.parent / "tools"
+    out = "hw.luac"
+
+    if os.name == "nt":  # "Windows"
+        tool = tool / "luac.exe"
+    elif os.name == "posix":  # "Linux"
+        tool = tool / "luac"
+
+    tool = str(tool)
+    os.system(f"{tool} -s -o {out} {lua_source}")
+
+    return out
+
+
+def list_directory(mavlink_connection):
+    ftp_wrapper = mavftp.FtpWrapper(mavlink_connection)
+    print(ftp_wrapper.list_directory("/dev/"))
+
+
+def lua_script_upload(mavlink_connection):
+    """
+    Compiles lua code from a source file, and uploads it to the UAV using MAVLink FTP subprotocol.
+    Works on both Pioneer and Pioneer Mini.
+
+    :param mavlink_connection: "MAVLink connection object".
+    """
+    lua_source = "pioneer_led_blink.lua"
+    lua_compiled = lua_compile(lua_source)
+    dest_file_name = "/dev/LuaScript/main.lua"
+
+    ftp_wrapper = mavftp.FtpWrapper(mavlink_connection)
+    ftp_wrapper.reset_sessions()
+    ftp_wrapper.upload_file(lua_compiled, dest_file_name)
+
+
+def main():
+    mavlink_connection = MavlinkConnectionFactory.make_connected_udp_instantiate()
+    list_directory(mavlink_connection)
+    lua_script_upload(mavlink_connection)
+
+
+if __name__ == "__main__":
+    main()
