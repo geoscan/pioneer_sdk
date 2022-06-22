@@ -5,45 +5,30 @@ import inspect
 import time
 
 
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+
+
 class Logging:
-
-	LEVEL = logging.DEBUG
-	_logger = None
-
-	@staticmethod
-	def get_logger():
-
-		if Logging._logger is None:
-			Logging._logger = logging.getLogger('logger')
-			Logging._logger.setLevel(Logging.LEVEL)
-
-			sh = logging.StreamHandler()
-			sh.setLevel(Logging.LEVEL)
-			sh.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
-
-			Logging._logger.addHandler(sh)
-
-		return Logging._logger
 
 	@staticmethod
 	def info(*args, **kwargs):
-		return Logging.get_logger().info(Logging.format(*args, **kwargs))
+		return logging.info(Logging.format(*args, **kwargs))
 
 	@staticmethod
 	def warning(*args, **kwargs):
-		return Logging.get_logger().warning(Logging.format(*args, **kwargs))
+		return logging.warning(Logging.format(*args, **kwargs))
 
 	@staticmethod
 	def error(*args, **kwargs):
-		return Logging.get_logger().error(Logging.format(*args, **kwargs))
+		return logging.error(Logging.format(*args, **kwargs))
 
 	@staticmethod
 	def debug(*args, **kwargs):
-		return Logging.get_logger().debug(Logging.format(*args, **kwargs))
+		return logging.debug(Logging.format(*args, **kwargs))
 
 	@staticmethod
 	def critical(*args, **kwargs):
-		return Logging.get_logger().critical(Logging.format(*args, **kwargs))
+		return logging.critical(Logging.format(*args, **kwargs))
 
 	@staticmethod
 	def format(*args, **kwargs):
