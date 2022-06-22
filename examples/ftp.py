@@ -5,23 +5,7 @@ Demonstration of file exchange operations implemented over MAVLink FTP subprotoc
 import pathlib, sys, os, time
 from pioneer_sdk.mavsub import ftp as mavftp
 from pioneer_sdk.piosdk import MavlinkConnectionFactory, Pioneer
-
-
-def lua_compile(lua_source) -> str:
-    """ Compiles a binary from Lua source file """
-
-    tool = pathlib.Path(__file__).resolve().parent.parent / "tools"
-    out = "hw.luac"
-
-    if os.name == "nt":  # "Windows"
-        tool = tool / "luac.exe"
-    elif os.name == "posix":  # "Linux"
-        tool = tool / "luac"
-
-    tool = str(tool)
-    os.system(f"{tool} -s -o {out} {lua_source}")
-
-    return out
+from pioneer_sdk.tools import lua
 
 
 def list_directory(mavlink_connection):
@@ -37,7 +21,7 @@ def lua_script_upload(mavlink_connection):
     :param mavlink_connection: "MAVLink connection object".
     """
     lua_source = "pioneer_led_blink.lua"
-    lua_compiled = lua_compile(lua_source)
+    lua_compiled = str(lua.compile(lua_source))
     dest_file_name = "/dev/LuaScript/main.lua"
 
     ftp_wrapper = mavftp.FtpWrapper(mavlink_connection)
