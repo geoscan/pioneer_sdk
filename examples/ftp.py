@@ -1,13 +1,13 @@
 """
-Demonstration of file exchange operations using MAVLink FTP subprotocol.
+Demonstration of file exchange operations implemented over MAVLink FTP subprotocol.
 """
 
-import pathlib, sys, os
+import pathlib, sys, os, time
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 
 from pioneer_sdk.mavsub import ftp as mavftp
-from pioneer_sdk.piosdk import MavlinkConnectionFactory
+from pioneer_sdk.piosdk import MavlinkConnectionFactory, Pioneer
 
 
 def lua_compile(lua_source) -> str:
@@ -50,8 +50,12 @@ def lua_script_upload(mavlink_connection):
 
 def main():
     mavlink_connection = MavlinkConnectionFactory.make_connected_udp_instantiate()
+    drone = Pioneer(mavlink_connection)
     list_directory(mavlink_connection)
     lua_script_upload(mavlink_connection)
+    drone.lua_script_control("Start")
+    time.sleep(2)
+    drone.lua_script_control("Stop")
 
 
 if __name__ == "__main__":
