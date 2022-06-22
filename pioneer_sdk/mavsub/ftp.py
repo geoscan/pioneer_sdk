@@ -3,6 +3,7 @@ from pymavlink.dialects.v20 import common
 import sys
 import pathlib
 import re
+import os
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 from generic import Logging
 
@@ -557,7 +558,7 @@ class FtpWrapper:
 		read_state = ReadState()
 
 		while nak == Nak.NONE:
-			nak, chunk = self._try_receive(self.ftp.read_file, size=Ftp.CHUNK_SIZE, session=sid,
+			nak, chunk = self._try_receive(self.ftp.read_file, size=FtpWrapper.CHUNK_SIZE, session=sid,
 				offset=read_state.offset)
 			Nak.try_raise(nak)
 			if nak == Nak.NONE:
@@ -591,9 +592,9 @@ class FtpWrapper:
 
 			def handle_chunk(self):
 				if self._file is None:
-					next_chunk = src[self._offset : self._offset + Ftp.CHUNK_SIZE]
+					next_chunk = src[self._offset : self._offset + FtpWrapper.CHUNK_SIZE]
 				else:
-					next_chunk = self._file.read(Ftp.CHUNK_SIZE)
+					next_chunk = self._file.read(FtpWrapper.CHUNK_SIZE)
 
 				off = self._offset
 				self._offset += len(next_chunk)
