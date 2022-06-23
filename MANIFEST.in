@@ -1,2 +1,2 @@
-include tools/luac
-include tools/luac.exe
+include pioneer_sdk/tools/luac
+include pioneer_sdk/tools/luac.exe
