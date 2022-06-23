@@ -5,7 +5,9 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
   name='pioneer_sdk',
-  packages=['pioneer_sdk'],
+  packages=['pioneer_sdk', 'pioneer_sdk.mavsub', 'pioneer_sdk.tools'],
+  package_dir={"pioneer_sdk.tools": "tools"},
+  include_package_data=True,
   version='0.2.6',
   license='MIT',
   description='Programming tools for programming geoscan pioneer drone',
@@ -18,6 +20,7 @@ setup(
   setup_requires=['wheel'],
   install_requires=[
           'pymavlink',
+          'pyserial',
       ],
   classifiers=[
     "Programming Language :: Python :: 3",

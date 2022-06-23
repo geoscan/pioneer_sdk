@@ -1,0 +1,2 @@
+include tools/luac
+include tools/luac.exe

@@ -1,5 +1,8 @@
 from pymavlink import mavutil
 from pymavlink.dialects.v20 import common
+from pioneer_sdk.mavsub import ftp as mavftp
+from pioneer_sdk.tools import lua
+from pioneer_sdk.generic import GetattrLockDecorator
 import json
 import threading
 import socket
@@ -89,11 +92,11 @@ class MavlinkConnectionFactory:
 class Pioneer:
     def __init__(self, logger=True, mavlink_connection=MavlinkConnectionFactory.make_connected_udp_instantiate()):
 
-        self.__heartbeat_send_delay = 0.25
+        self.__heartbeat_send_delay = 1
         self.__ack_timeout = 1
         self.__logger = logger
         self.__prev_point_id = None
-        self.__mavlink_socket = mavlink_connection
+        self.__mavlink_socket = GetattrLockDecorator(mavlink_connection)
         self.t_start = time.time()
 
         self.autopilot_state = {
@@ -141,9 +144,6 @@ class Pioneer:
         self.__heartbeat_thread.daemon = True
         self.__heartbeat_thread.start()
         while not self.__init_heartbeat_event.is_set():
-            pass
-        time.sleep(0.5)
-        while not self.point_reached():
             pass
 
     def __send_heartbeat(self):
@@ -474,6 +474,21 @@ class Pioneer:
                         return False
         except:
             pass
+
+    def lua_script_upload(self, lua_source):
+        """
+        Compiles lua code from a source file, and uploads it to the UAV using MAVLink FTP subprotocol.
+        Works on both Pioneer and Pioneer Mini.
+
+        :param mavlink_connection: "MAVLink connection object".
+        """
+        lua_compiled = str(lua.compile(lua_source))
+        dest_file_name = "/dev/LuaScript/main.lua"
+
+        ftp_wrapper = mavftp.FtpWrapper(self.__mavlink_socket)
+        ftp_wrapper.reset_sessions()
+        ftp_wrapper.upload_file(lua_compiled, dest_file_name)
+
 
     def lua_script_control(self, input_state='Stop'):
         """ Start/stop loaded to board LUA script """
