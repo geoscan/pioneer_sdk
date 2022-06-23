@@ -2,6 +2,7 @@ from pymavlink import mavutil
 from pymavlink.dialects.v20 import common
 from pioneer_sdk.mavsub import ftp as mavftp
 from pioneer_sdk.tools import lua
+from pioneer_sdk.generic import GetattrLockDecorator
 import json
 import threading
 import socket
@@ -91,11 +92,11 @@ class MavlinkConnectionFactory:
 class Pioneer:
     def __init__(self, logger=True, mavlink_connection=MavlinkConnectionFactory.make_connected_udp_instantiate()):
 
-        self.__heartbeat_send_delay = 0.25
+        self.__heartbeat_send_delay = 1
         self.__ack_timeout = 1
         self.__logger = logger
         self.__prev_point_id = None
-        self.__mavlink_socket = mavlink_connection
+        self.__mavlink_socket = GetattrLockDecorator(mavlink_connection)
         self.t_start = time.time()
 
         self.autopilot_state = {
