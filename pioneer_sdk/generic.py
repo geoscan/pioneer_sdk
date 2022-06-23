@@ -30,7 +30,7 @@ class GetattrLockDecorator:
 			self.__lock.release()
 
 		def __getattr__(self, name):
-			return getattr(self.__obj, name)
+			return self.__obj.__getattribute__(name)
 
 	def __init__(self, obj):
 		self.__lock = threading.Lock()
@@ -38,9 +38,6 @@ class GetattrLockDecorator:
 
 	def __getattr__(self, name):
 		return getattr(GetattrLockDecorator.ObjLockGuard(self.__obj, self.__lock), name)
-
-	def __setattr__(self, key, value):
-		return setattr(self.__obj, key, value)
 
 
 class Logging:
