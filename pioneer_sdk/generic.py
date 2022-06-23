@@ -39,6 +39,9 @@ class GetattrLockDecorator:
 	def __getattr__(self, name):
 		return getattr(GetattrLockDecorator.ObjLockGuard(self.__obj, self.__lock), name)
 
+	def __setattr__(self, key, value):
+		return setattr(self.__obj, key, value)
+
 
 class Logging:
 
