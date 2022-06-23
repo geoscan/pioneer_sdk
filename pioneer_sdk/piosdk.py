@@ -144,9 +144,6 @@ class Pioneer:
         self.__heartbeat_thread.start()
         while not self.__init_heartbeat_event.is_set():
             pass
-        time.sleep(0.5)
-        while not self.point_reached():
-            pass
 
     def __send_heartbeat(self):
         self.__mavlink_socket.mav.heartbeat_send(mavutil.mavlink.MAV_TYPE_GCS,
