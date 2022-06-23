@@ -2,7 +2,7 @@ from pymavlink import mavutil
 from pymavlink.dialects.v20 import common
 from pioneer_sdk.mavsub import ftp as mavftp
 from pioneer_sdk.tools import lua
-from pioneer_sdk.generic import GetattrLockDecorator
+from pioneer_sdk.generic import GetattrLockDecorator, Logging
 import json
 import threading
 import socket
@@ -204,7 +204,8 @@ class Pioneer:
                 elif command_ack.result == 4:  # MAV_RESULT_FAILED
                     if self.__logger:
                         print('MAV_RESULT_FAILED')
-                    if command_ack.result_param2 is not None:
+                    if command_ack.result_param2 is not None \
+                            and command_ack.command == mavutil.mavlink.MAV_CMD_COMPONENT_ARM_DISARM:
                         self.preflight_state.update(BatteryLow=command_ack.result_param2 & 0b00000001)
                         self.preflight_state.update(NavSystem=command_ack.result_param2 & 0b00000010)
                         self.preflight_state.update(Area=command_ack.result_param2 & 0b00000100)
@@ -213,6 +214,9 @@ class Pioneer:
                         self.preflight_state.update(RcMode=command_ack.result_param2 & 0b00100000)
                         self.preflight_state.update(RcUnexpected=command_ack.result_param2 & 0b01000000)
                         self.preflight_state.update(UavStartAllowed=command_ack.result_param2 & 0b10000000)
+                        Logging.warning( __file__, Pioneer, Pioneer.arm, "Arm request failed", "reasons",
+                                        [k for k in self.preflight_state.keys() if self.preflight_state[k]])
+
                     return False, command_ack.command
                 elif command_ack.result == 5:  # MAV_RESULT_IN_PROGRESS
                     if self.__logger:
