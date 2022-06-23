@@ -25,10 +25,8 @@ class GetattrLockDecorator:
 			self.__lock = lock
 			self.__lock.acquire()
 			self.__obj = obj
-			print("lock")
 
 		def __del__(self):
-			print("unlock")
 			self.__lock.release()
 
 		def __getattr__(self, name):
