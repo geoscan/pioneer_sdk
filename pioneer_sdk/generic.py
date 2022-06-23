@@ -3,9 +3,43 @@ import pathlib
 import os
 import inspect
 import time
-
+import threading
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+
+
+class GetattrLockDecorator:
+	"""
+	Creates a proxy which behaves exactly like the object it encapsulates, while locking
+	it each time its attributes are get-accessed.
+
+	Its primary goal is to store a locking primitive (mutex), and the protected instance itself
+	"""
+
+	class ObjLockGuard:
+		"""
+		Raii object locker
+		"""
+
+		def __init__(self, obj, lock):
+			self.__lock = lock
+			self.__lock.acquire()
+			self.__obj = obj
+			print("lock")
+
+		def __del__(self):
+			print("unlock")
+			self.__lock.release()
+
+		def __getattr__(self, name):
+			return getattr(self.__obj, name)
+
+	def __init__(self, obj):
+		self.__lock = threading.Lock()
+		self.__obj = obj
+
+	def __getattr__(self, name):
+		return getattr(GetattrLockDecorator.ObjLockGuard(self.__obj, self.__lock), name)
 
 
 class Logging:
