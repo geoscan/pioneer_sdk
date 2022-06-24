@@ -70,7 +70,7 @@ class EspCamera:
 
 class VideoStream:
     def __init__(self):
-        self.camera = EspCamera()
+        self.camera = EspCamera(False)
 
     def run(self, interactive=False):
         """
