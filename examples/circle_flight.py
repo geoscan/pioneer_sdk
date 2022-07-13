@@ -1,11 +1,10 @@
-from pioneer_sdk import Pioneer
-from pioneer_sdk.esp_camera import EspCamera
+from pioneer_sdk import Pioneer, Camera
 import cv2
 import math
 import numpy as np
 
 angle = float(0)
-number_of_points = 24
+number_of_points = 10
 increment = float(360 / number_of_points)
 radius = 0.6
 flight_height = float(1)
@@ -16,16 +15,16 @@ command_y = radius * math.sin(math.radians(angle))
 command_yaw = math.radians(angle)
 
 new_point = True
-p_r = False
+p_reached = False
 
 if __name__ == '__main__':
     print('start')
     pioneer_mini = Pioneer()
     pioneer_mini.arm()
     pioneer_mini.takeoff()
-    esp_camera = EspCamera()
+    camera = Camera()
     while True:
-        camera_frame = cv2.imdecode(np.frombuffer(esp_camera.get_raw_video_frame(), dtype=np.uint8), cv2.IMREAD_COLOR)
+        camera_frame = cv2.imdecode(np.frombuffer(camera.get_frame(), dtype=np.uint8), cv2.IMREAD_COLOR)
         cv2.imshow('pioneer_camera_stream', camera_frame)
 
         if new_point:
@@ -33,9 +32,9 @@ if __name__ == '__main__':
             new_point = False
 
         if pioneer_mini.point_reached():
-            p_r = True
+            p_reached = True
 
-        if p_r:
+        if p_reached:
             if angle == 360:
                 last_point_reached = True
             else:
@@ -44,7 +43,7 @@ if __name__ == '__main__':
                 command_y = radius * math.sin(math.radians(angle))
                 command_yaw += math.radians(increment)
                 new_point = True
-            p_r = False
+            p_reached = False
 
         key = cv2.waitKey(1)
         if (key == 27) | last_point_reached:  # esc

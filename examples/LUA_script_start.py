@@ -1,13 +1,15 @@
 from pioneer_sdk import Pioneer
-import sys
 
 if __name__ == '__main__':
     pioneer_mini = Pioneer()
-    pioneer_mini.lua_script_control('Start')
-    while True:
-        try:
-            pass
-        except KeyboardInterrupt:
-            pioneer_mini.lua_script_control('Stop')
-            sys.exit()
+    try:
+        while True:
+            cmd = input()
+            match cmd:
+                case 'start':
+                    pioneer_mini.lua_script_control('Start')
+                case 'stop':
+                    pioneer_mini.lua_script_control('Stop')
+    except KeyboardInterrupt:
+        pioneer_mini.lua_script_control('Stop')
 
