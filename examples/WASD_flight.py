@@ -1,66 +1,77 @@
-from pioneer_sdk import Pioneer
-from pioneer_sdk.esp_camera import EspCamera
+import time
+
+from pioneer_sdk import Pioneer, Camera
 import cv2
-import math
 import numpy as np
 
-command_x = float(0)
-command_y = float(0)
-command_z = float(1)
-command_yaw = math.radians(float(0))
-increment_xy = float(0.2)
-increment_z = float(0.1)
-increment_deg = math.radians(float(90))
-new_command = False
-
+rc_speak = False
 if __name__ == '__main__':
-    print('start')
-    pioneer_mini = Pioneer()
-    esp_camera = EspCamera()
-    pioneer_mini.arm()
-    pioneer_mini.takeoff()
-    while True:
-        camera_frame = cv2.imdecode(np.frombuffer(esp_camera.get_raw_video_frame(), dtype=np.uint8), cv2.IMREAD_COLOR)
-        cv2.imshow('pioneer_camera_stream', camera_frame)
-        key = cv2.waitKey(1)
-        if key == 27:  # esc
-            print('esc pressed')
-            cv2.destroyAllWindows()
-            pioneer_mini.land()
-            break
-        elif key == ord('w'):
-            print('w')
-            command_y += increment_xy
-            new_command = True
-        elif key == ord('s'):
-            print('s')
-            command_y -= increment_xy
-            new_command = True
-        elif key == ord('a'):
-            print('a')
-            command_x -= increment_xy
-            new_command = True
-        elif key == ord('d'):
-            print('d')
-            command_x += increment_xy
-            new_command = True
-        elif key == ord('q'):
-            print('q')
-            command_yaw += increment_deg
-            new_command = True
-        elif key == ord('e'):
-            print('e')
-            command_yaw -= increment_deg
-            new_command = True
-        elif key == ord('h'):
-            print('h')
-            command_z += increment_z
-            new_command = True
-        elif key == ord('l'):
-            print('l')
-            command_z -= increment_z
-            new_command = True
+    print('''
+    1 -- arm
+    2 -- disarm
+    3 -- takeoff
+    4 -- land
 
-        if new_command:
-            pioneer_mini.go_to_local_point(x=command_x, y=command_y, z=command_z, yaw=command_yaw)
-            new_command = False
+    ↶q  w↑  e↷    i-↑
+    ←a      d→     k-↓
+        s↓''')
+    pioneer_mini = Pioneer()
+    camera = Camera()
+    min_v = 1300
+    max_v = 1700
+    try:
+        while True:
+            ch_1 = 1500
+            ch_2 = 1500
+            ch_3 = 1500
+            ch_4 = 1500
+            ch_5 = 2000
+            frame = camera.get_frame()
+            if frame is not None:
+                camera_frame = cv2.imdecode(np.frombuffer(camera.get_frame(), dtype=np.uint8),
+                                        cv2.IMREAD_COLOR)
+                cv2.imshow('pioneer_camera_stream', camera_frame)
+            key = cv2.waitKey(1)
+            if key == 27:  # esc
+                print('esc pressed')
+                cv2.destroyAllWindows()
+                pioneer_mini.land()
+                break
+            elif key == ord('1'):
+                pioneer_mini.arm()
+            elif key == ord('2'):
+                pioneer_mini.disarm()
+            elif key == ord('3'):
+                time.sleep(2)
+                pioneer_mini.arm()
+                time.sleep(1)
+                pioneer_mini.takeoff()
+                time.sleep(2)
+            elif key == ord('4'):
+                time.sleep(2)
+                pioneer_mini.land()
+                time.sleep(2)
+            elif key == ord('w'):
+                ch_3 = min_v
+            elif key == ord('s'):
+                ch_3 = max_v
+            elif key == ord('a'):
+                ch_4 = min_v
+            elif key == ord('d'):
+                ch_4 = max_v
+            elif key == ord('q'):
+                ch_2 = 2000
+            elif key == ord('e'):
+                ch_2 = 1000
+            elif key == ord('i'):
+                ch_1 = 2000
+            elif key == ord('k'):
+                ch_1 = 1000
+
+
+            pioneer_mini.send_rc_channels(channel_1=ch_1, channel_2=ch_2, channel_3=ch_3, channel_4=ch_4,
+                                      channel_5=ch_5)
+            time.sleep(0.02)
+    finally:
+        time.sleep(1)
+        pioneer_mini.land()
