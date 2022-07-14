@@ -60,7 +60,7 @@ class Camera:
         """Get bytes of frame.
         If UDP socket timeout then Exception raised.
         Returns :
-            boolean: True if siccess, False if bad data of no data in UDP socket
+            boolean: True if success, False if bad data of no data in UDP socket
             bytes(): Bytes of frame.
                      If first arg is True then current frame.
                      If first arg is False then last success frame.
