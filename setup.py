@@ -20,6 +20,7 @@ setup(
   install_requires=[
           'pymavlink',
           'pyserial',
+          'future',
       ],
   classifiers=[
     "Programming Language :: Python :: 3",
