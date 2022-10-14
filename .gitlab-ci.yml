@@ -6,7 +6,6 @@ stages:
 before_script:
    - python3 -m pip install twine
    - rm -rf dist/*
-   - python3 -m pip install wheel
    - python3 setup.py sdist bdist_wheel
 
 deploy_production:
