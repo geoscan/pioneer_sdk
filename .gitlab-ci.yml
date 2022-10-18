@@ -17,3 +17,4 @@ deploy_production:
       - master
     changes:
       - "pioneer_sdk/*"
+      - "examples/*"
