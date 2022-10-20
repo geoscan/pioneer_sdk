@@ -18,3 +18,4 @@ deploy_production:
     changes:
       - "pioneer_sdk/*"
       - "examples/*"
+      - "setup.py"
