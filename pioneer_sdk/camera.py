@@ -90,6 +90,17 @@ class Camera:
                     print('Camera DISCONNECTED')
             return None
 
+    def get_cv_frame(self):
+        """
+        get cv_frame
+        :return: cv_frame or None
+        """
+
+        frame = self.get_frame()
+        if frame is not None:
+            frame = cv2.imdecode(np.frombuffer(frame, dtype=np.uint8), cv2.IMREAD_COLOR)
+        return frame
+
 
 class VideoStream:
     def __init__(self, logger=True):
