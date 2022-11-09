@@ -5,11 +5,10 @@ if __name__ == '__main__':
     try:
         while True:
             cmd = input()
-            match cmd:
-                case 'start':
-                    pioneer_mini.lua_script_control('Start')
-                case 'stop':
-                    pioneer_mini.lua_script_control('Stop')
+            if cmd == 'start':
+                pioneer_mini.lua_script_control('Start')
+            elif cmd == 'stop':
+                pioneer_mini.lua_script_control('Stop')
     except KeyboardInterrupt:
         pioneer_mini.lua_script_control('Stop')
 

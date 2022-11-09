@@ -4,8 +4,7 @@ if __name__ == '__main__':
     stream = VideoStream()
     while True:
         cmd = input()
-        match cmd:
-            case 'start':
-                stream.start()
-            case 'stop':
-                stream.stop()
+        if cmd == 'start':
+            stream.start()
+        elif cmd == 'stop':
+            stream.stop()

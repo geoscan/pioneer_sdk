@@ -46,9 +46,14 @@ class Pioneer:
         24: 'ON_DEMAND'
     }
 
-    def __init__(self, name='pioneer', ip='192.168.4.1', mavlink_port=8001, connection_method=2,
+    def __init__(self, name='pioneer', ip='192.168.4.1', mavlink_port=8001, connection_method='udpout',
                  device='/dev/serial0', baud=115200,
                  logger=True, log_connection=True):
+        # connection_method:
+        # 'udpin': 0
+        # 'serial': 1
+        # 'udpout': 2
+
 
         self.name = name
 
@@ -79,16 +84,21 @@ class Pioneer:
                                      RcUnexpected=None,
                                      UavStartAllowed=None)
         self.mavlink_socket = None
+        # connection_method:
+        # 'udpin': 0
+        # 'serial': 1
+        # 'udpout': 2
         try:
-            match connection_method:
-                case 0:
-                    self.mavlink_socket = mavutil.mavlink_connection('udpin:%s:%s' % (ip, mavlink_port))
-                case 1:
-                    self.mavlink_socket = mavutil.mavlink_connection(device=device, baud=baud)
-                case 2:
-                    self.mavlink_socket = mavutil.mavlink_connection('udpout:%s:%s' % (ip, mavlink_port))
-                case _:
-                    print(f"Unknown connection method: {connection_method}")
+            # Support both numbers and words for backward compatibility
+            if connection_method == 'udpin' or connection_method == 0:
+                self.mavlink_socket = mavutil.mavlink_connection('udpin:%s:%s' % (ip, mavlink_port))
+            elif connection_method == 'udpout' or connection_method == 2:
+                self.mavlink_socket = mavutil.mavlink_connection('udpout:%s:%s' % (ip, mavlink_port))
+            elif connection_method == 'serial' or connection_method == 1:
+                self.mavlink_socket = mavutil.mavlink_connection(device=device, baud=baud)
+            else:
+                print(f"Unknown connection method: {connection_method}")
+                sys.exit()
         except socket.error as e:
             print('Connection error. Can not connect to drone')
             sys.exit()
@@ -133,6 +143,15 @@ class Pioneer:
         except Exception:
             pass
 
+    def _mission_item_reached(self, msg):
+        if self._point_seq is None:
+            self._point_seq = msg.seq
+        if msg.seq > self._point_seq:
+            self._point_reached = True
+            if self._logger:
+                self.log(msg_type='POINT_REACHED', msg=f'point_id: {msg.seq}')
+        self._point_seq = msg.seq
+
     def _message_handler(self):
         while True:
             if time.time() - self._heartbeat_send_time >= self._heartbeat_timeout:
@@ -144,29 +163,23 @@ class Pioneer:
                     self._is_connected = True
                     if self._log_connection:
                         self.log(msg_type='connection', msg='CONNECTED')
-                match msg.get_type():
-                    case 'HEARTBEAT':
-                        self._receive_heartbeat(msg)
-                    case 'MISSION_ITEM_REACHED':
-                        if self._point_seq is None:
-                            self._point_seq = msg.seq
-                        if msg.seq > self._point_seq:
-                            self._point_reached = True
-                            if self._logger:
-                                self.log(msg_type='POINT_REACHED', msg=f'point_id: {msg.seq}')
-                        self._point_seq = msg.seq
-                    case 'COMMAND_ACK':
-                        msg._type += f'_{msg.command}'
-                        # if msg.command == 400 and msg.result_param2 is not None:
-                        #     print("PREFLIGHT_STATE")
-                        #     self._preflight_state.update(BatteryLow=msg.result_param2 & 0b00000001)
-                        #     self._preflight_state.update(NavSystem=msg.result_param2 & 0b00000010)
-                        #     self._preflight_state.update(Area=msg.result_param2 & 0b00000100)
-                        #     self._preflight_state.update(Attitude=msg.result_param2 & 0b00001000)
-                        #     self._preflight_state.update(RcExpected=msg.result_param2 & 0b00010000)
-                        #     self._preflight_state.update(RcMode=msg.result_param2 & 0b00100000)
-                        #     self._preflight_state.update(RcUnexpected=msg.result_param2 & 0b01000000)
-                        #     self._preflight_state.update(UavStartAllowed=msg.result_param2 & 0b10000000)
+                if msg.get_type() == 'HEARTBEAT':
+                    self._receive_heartbeat(msg)
+                elif msg.get_type() == 'MISSION_ITEM_REACHED':
+                    self._mission_item_reached(msg)
+                elif msg.get_type() == 'COMMAND_ACK':
+                    msg._type += f'_{msg.command}'
+                    if msg.command == 400 and msg.result_param2 is not None:
+                        self._preflight_state.update(BatteryLow=msg.result_param2 & 0b00000001)
+                        self._preflight_state.update(NavSystem=msg.result_param2 & 0b00000010)
+                        self._preflight_state.update(Area=msg.result_param2 & 0b00000100)
+                        self._preflight_state.update(Attitude=msg.result_param2 & 0b00001000)
+                        self._preflight_state.update(RcExpected=msg.result_param2 & 0b00010000)
+                        self._preflight_state.update(RcMode=msg.result_param2 & 0b00100000)
+                        self._preflight_state.update(RcUnexpected=msg.result_param2 & 0b01000000)
+                        self._preflight_state.update(UavStartAllowed=msg.result_param2 & 0b10000000)
+
+
                 if msg.get_type() in self.wait_msg:
                     self.wait_msg[msg.get_type()].set()
                 self.msg_archive.update({msg.get_type(): {'msg': msg, 'is_read': threading.Event()}})

@@ -7,7 +7,7 @@ setup(
   name='pioneer_sdk',
   packages=['pioneer_sdk', 'pioneer_sdk.mavsub', 'pioneer_sdk.tools'],
   include_package_data=True,
-  version='0.4.1',
+  version='0.4.2',
   license='MIT',
   description='Programming tools for programming geoscan pioneer drone',
   long_description=long_description,
@@ -22,12 +22,12 @@ setup(
           'pyserial',
           'future',
           'numpy',
-          'opencv-python'
+          'opencv-contrib-python'
       ],
   classifiers=[
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
   ],
-  python_requires='>=3.10',
+  python_requires='>=3.7',
 )
