@@ -169,6 +169,16 @@ class Pioneer:
                     self._mission_item_reached(msg)
                 elif msg.get_type() == 'COMMAND_ACK':
                     msg._type += f'_{msg.command}'
+                    if msg.command == 400 and msg.result_param2 is not None:
+                        self._preflight_state.update(BatteryLow=msg.result_param2 & 0b00000001)
+                        self._preflight_state.update(NavSystem=msg.result_param2 & 0b00000010)
+                        self._preflight_state.update(Area=msg.result_param2 & 0b00000100)
+                        self._preflight_state.update(Attitude=msg.result_param2 & 0b00001000)
+                        self._preflight_state.update(RcExpected=msg.result_param2 & 0b00010000)
+                        self._preflight_state.update(RcMode=msg.result_param2 & 0b00100000)
+                        self._preflight_state.update(RcUnexpected=msg.result_param2 & 0b01000000)
+                        self._preflight_state.update(UavStartAllowed=msg.result_param2 & 0b10000000)
+
 
                 if msg.get_type() in self.wait_msg:
                     self.wait_msg[msg.get_type()].set()

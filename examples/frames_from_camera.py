@@ -2,17 +2,18 @@ import cv2
 import numpy as np
 from pioneer_sdk import Camera
 
-# Камера дрона
+# Connect to the drone camera
 camera = Camera()
 
-while True:
-    raw_frame = camera.get_frame()  # Получаем сырые данные
-    if raw_frame is not None:
-        # Декодируем полученные данные, чтобы получить изображение
-        frame = camera_frame = cv2.imdecode(np.frombuffer(raw_frame, dtype=np.uint8), cv2.IMREAD_COLOR)
-    cv2.imshow('video', frame)  # Выводим изображение на экран
-    
-    if cv2.waitKey(1) & 0xFF == 27:  # Выход из программы, если нажали ESC
-        break
+if __name__ == '__main__':
+    while True:
+        raw_frame = camera.get_frame()  # Get raw data
+        if raw_frame is not None:
+            # Decode data to get image
+            frame = camera_frame = cv2.imdecode(np.frombuffer(raw_frame, dtype=np.uint8), cv2.IMREAD_COLOR)
+        cv2.imshow('video', frame)  # Show an image on the screen
+        
+        if cv2.waitKey(1) & 0xFF == 27:  # Exit if the ESC key is pressed
+            break
 
-cv2.destroyAllWindows()  # Закрываем все открытые окна
+    cv2.destroyAllWindows()  # Close all opened openCV windows
