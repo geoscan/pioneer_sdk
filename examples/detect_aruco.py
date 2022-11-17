@@ -18,7 +18,7 @@ if __name__ == '__main__':
         cv2.aruco.drawDetectedMarkers(frame, corners, ids)
         cv2.imshow('video', frame)  # Show an image on the screen
         
-        if cv2.waitKey(1) & 0xFF == 27:  # Exit if the ESC key is pressed
+        if cv2.waitKey(1) == 27:  # Exit if the ESC key is pressed
             break
 
     cv2.destroyAllWindows()  # Close all opened openCV windows
