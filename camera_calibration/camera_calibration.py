@@ -133,20 +133,37 @@ def load_coefficients(path):
     cv_file.release()
     return camera_matrix, dist_matrix
 
-if __name__ == '__main__':
-    # !!!! Images from folder !!!!
-    # images = get_images_from_folder('images')
 
-    # !!!! Computer camera !!!!
-    # capture = cv2.VideoCapture(0)
-    # images = get_images_from_computer_camera(capture)
-    # capture.release()
+def main():
+    """
+    Acquires images from the provided image source, calibrates the camera.
 
+    This particular example uses the drone's camera as the image source.
+    However, you can change the source by replacing
+    `get_images_from_computer_camera` w/ another function.
 
-    # !!!! Drone camera !!!!
+    Examples:
+    ```
+    # Load images from folder
+    images = get_images_from_folder('images')
+    ```
+
+    ```
+    # Capture images from computer camera
+    capture = cv2.VideoCapture(0)
+    images = get_images_from_computer_camera(capture)
+    capture.release()
+    ```
+    """
+
+    # Acquire images from the drone's camera
     camera = Camera()
     images = get_images_from_drone_camera(camera)
 
     mtx, dist = calibrate(images)
 
     save_coefficients(mtx, dist, "data.yml")
+
+
+if __name__ == '__main__':
+    main()
