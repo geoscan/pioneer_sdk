@@ -144,15 +144,17 @@ def main():
 
     Examples:
     ```
-    # Load images from folder
+    # Load images from a directory
     images = get_images_from_folder('images')
+    # ...
     ```
 
     ```
-    # Capture images from computer camera
+    # Capture the images from a camera device
     capture = cv2.VideoCapture(0)
     images = get_images_from_computer_camera(capture)
     capture.release()
+    # ...
     ```
     """
 
