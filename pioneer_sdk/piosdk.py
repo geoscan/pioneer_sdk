@@ -8,7 +8,7 @@ import time
 
 
 class Pioneer:
-    mav_result = {
+    MAV_RESULT = {
         -1: 'SEND_TIMEOUT',
         0: 'ACCEPTED',
         1: 'TEMPORARILY_REJECTED',
@@ -18,7 +18,7 @@ class Pioneer:
         5: 'IN_PROGRESS',
         6: 'CANCELLED'
     }
-    autopilot_state = {
+    AUTOPILOT_STATE = {
         0: 'ROOT',
         1: 'DISARMED',
         2: 'IDLE',
@@ -46,7 +46,7 @@ class Pioneer:
         24: 'ON_DEMAND'
     }
 
-    _supported_connection_methods = ['udpin', 'udpout', 'serial']
+    _SUPPORTED_CONNECTION_METHODS = ['udpin', 'udpout', 'serial']
 
     def __init__(self, name='pioneer', ip='192.168.4.1', mavlink_port=8001, connection_method='udpout',
                  device='/dev/serial0', baud=115200,
@@ -81,13 +81,9 @@ class Pioneer:
                                      RcUnexpected=None,
                                      UavStartAllowed=None)
 
-        self.__connection_method = connection_method
-        self.__ip = ip
-        self.__port = mavlink_port
-        self.__device = device
-        self.__baud = baud
-
-        self.mavlink_socket = self._create_connection()
+        self.mavlink_socket = self._create_connection(connection_method=connection_method,
+                                                      ip=ip, port=mavlink_port,
+                                                      device=device, baud=baud)
         self.__is_socket_open = threading.Event()
         self.__is_socket_open.set()
 
@@ -98,33 +94,30 @@ class Pioneer:
         self._message_handler_thread.daemon = True
         self._message_handler_thread.start()
 
-        if self._log_connection:
-            self.log(msg_type='connection', msg='Connecting to drone...')
+        self.log(msg_type='connection', msg='Connecting to drone...')
 
     def __del__(self):
-        print("Pioneer class object removed")
+        self.log(msg="Pioneer class object removed")
 
-    def _create_connection(self):
+    def _create_connection(self, connection_method, ip, port, device, baud):
         """
         create mavlink connection
         :return: mav_socket
         """
-        if self.__connection_method not in self._supported_connection_methods:
-            print(f"Unknown connection method: {self.__connection_method}")
-            sys.exit()
+        if connection_method not in self._SUPPORTED_CONNECTION_METHODS:
+            raise Exception(f"Unknown connection method: {connection_method}")
 
         mav_socket = None
         try:
-            if self.__connection_method == "serial":
-                mav_socket = mavutil.mavlink_connection(device=self.__device, baud=self.__baud)
+            if connection_method == "serial":
+                mav_socket = mavutil.mavlink_connection(device=device, baud=baud)
             else:
-                mav_socket = mavutil.mavlink_connection('%s:%s:%s' % (self.__connection_method, self.__ip, self.__port))
+                mav_socket = mavutil.mavlink_connection('%s:%s:%s' % (connection_method, ip, port))
 
             return mav_socket
 
         except socket.error as e:
-            print('Connection error. Can not connect to drone')
-            sys.exit()
+            raise Exception('Connection error. Can not connect to drone', e)
 
     def close_connection(self):
         """
@@ -132,19 +125,24 @@ class Pioneer:
         :return: None
         """
         self.__is_socket_open.clear()
-        time.sleep(1)
+        self._message_handler_thread.join()
         self.mavlink_socket.close()
 
-        if self._log_connection:
-            self.log(msg='Close mavlink socket')
+        self.log(msg_type='connection', msg='Close mavlink socket')
 
     def log(self, msg, msg_type=None):
+
+        if msg_type == "connection" and not self._log_connection:
+            return
+        elif msg_type != "connection" and not self._logger:
+            return
+
         if msg_type is None:
             print(f"[{self.name}] {msg}")
         else:
             print(f"[{self.name}] <{msg_type}> {msg}")
 
-    def get_connected_status(self):
+    def connected(self):
         return self._is_connected
 
     def set_logger(self, value: bool = True):
@@ -164,7 +162,7 @@ class Pioneer:
                 custom_mode = msg.custom_mode
                 custom_mode_buf = format(custom_mode, "032b")
                 status_autopilot = custom_mode_buf[24:]
-                self._cur_state = Pioneer.autopilot_state[int(status_autopilot, 2)]
+                self._cur_state = Pioneer.AUTOPILOT_STATE[int(status_autopilot, 2)]
         except Exception:
             pass
 
@@ -173,8 +171,8 @@ class Pioneer:
             self._point_seq = msg.seq
         if msg.seq > self._point_seq:
             self._point_reached = True
-            if self._logger:
-                self.log(msg_type='POINT_REACHED', msg=f'point_id: {msg.seq}')
+
+            self.log(msg_type='POINT_REACHED', msg=f'point_id: {msg.seq}')
         self._point_seq = msg.seq
 
     def _message_handler(self):
@@ -190,8 +188,8 @@ class Pioneer:
                 self._last_msg_time = time.time()
                 if not self._is_connected:
                     self._is_connected = True
-                    if self._log_connection:
-                        self.log(msg_type='connection', msg='CONNECTED')
+
+                    self.log(msg_type='connection', msg='CONNECTED')
                 if msg.get_type() == 'HEARTBEAT':
                     self._receive_heartbeat(msg)
                 elif msg.get_type() == 'MISSION_ITEM_REACHED':
@@ -214,17 +212,16 @@ class Pioneer:
 
             elif self._is_connected and (time.time() - self._last_msg_time > self._is_connected_timeout):
                 self._is_connected = False
-                if self._log_connection:
-                    self.log(msg_type='connection', msg='DISCONNECTED')
 
-        if self._logger:
-            self.log(msg="Message handler stopped")
+                self.log(msg_type='connection', msg='DISCONNECTED')
+
+        self.log(msg="Message handler stopped")
 
     def _send_command_long(self, command_name, command, param1: float = 0, param2: float = 0, param3: float = 0,
                            param4: float = 0, param5: float = 0, param6: float = 0, param7: float = 0,
                            target_system=None, target_component=None, sending_log_msg='sending...'):
-        if self._logger:
-            self.log(msg_type=command_name, msg=sending_log_msg)
+
+        self.log(msg_type=command_name, msg=sending_log_msg)
         if target_system is None:
             target_system = self.mavlink_socket.target_system
         if target_component is None:
@@ -253,20 +250,17 @@ class Pioneer:
                     self.msg_archive[msg_to_wait]['is_read'].set()
                     if msg.result == 5:  # IN_PROGRESS
                         in_progress = True
-                        if self._logger:
-                            self.log(msg_type=command_name,
-                                     msg=Pioneer.mav_result[msg.result])
+
+                        self.log(msg_type=command_name, msg=Pioneer.MAV_RESULT[msg.result])
                         event.clear()
                     else:
-                        if self._logger:
-                            self.log(msg_type=command_name,
-                                     msg=Pioneer.mav_result[msg.result])
+
+                        self.log(msg_type=command_name, msg=Pioneer.MAV_RESULT[msg.result])
                         return msg.result in [0, 2]
                 else:
                     if_send = True
                 if confirm >= self._mavlink_send_number:
-                    if self._logger:
-                        self.log(msg_type=command_name, msg=Pioneer.mav_result[-1])
+                    self.log(msg_type=command_name, msg=Pioneer.MAV_RESULT[-1])
                     return False
         finally:
             if msg_to_wait in self.wait_msg:
@@ -345,14 +339,14 @@ class Pioneer:
                     msg = self.msg_archive['POSITION_TARGET_LOCAL_NED']['msg']
                     self.msg_archive['POSITION_TARGET_LOCAL_NED']['is_read'].set()
                     if msg.type_mask == mask:
-                        if self._logger:
-                            self.log(msg_type=command_name, msg=Pioneer.mav_result[0])
+
+                        self.log(msg_type=command_name, msg=Pioneer.MAV_RESULT[0])
                     else:
-                        if self._logger:
-                            self.log(msg_type=command_name, msg=Pioneer.mav_result[2])
+
+                        self.log(msg_type=command_name, msg=Pioneer.MAV_RESULT[2])
                     return True
-            if self._logger:
-                self.log(msg_type=command_name, msg=Pioneer.mav_result[-1])
+
+            self.log(msg_type=command_name, msg=Pioneer.MAV_RESULT[-1])
             return False
         finally:
             if 'POSITION_TARGET_LOCAL_NED' in self.wait_msg:
@@ -361,8 +355,8 @@ class Pioneer:
     def go_to_local_point(self, x, y, z, yaw):
         """ Flight to point in the current navigation system's coordinate frame """
         cmd_name = 'GO_TO_POINT'
-        if self._logger:
-            self.log(msg_type=cmd_name, msg=f'sending point {{LOCAL, x:{x}, y:{y}, z:{z}, yaw:{yaw}}} ...')
+
+        self.log(msg_type=cmd_name, msg=f'sending point {{LOCAL, x:{x}, y:{y}, z:{z}, yaw:{yaw}}} ...')
         mask = 0b0000_10_0_111_111_000  # _ _ _ _ yaw_rate yaw   force_set   afz afy afx   vz vy vx   z y x
         x, y, z = y, x, -z  # ENU coordinates to NED coordinates
         self._point_reached = False
@@ -374,8 +368,8 @@ class Pioneer:
         """ Flight to point relative to the current position """
 
         cmd_name = 'GO_TO_POINT'
-        if self._logger:
-            self.log(msg_type=cmd_name, msg=f'sending point {{BODY_FIX, x:{x}, y:{y}, z:{z}, yaw:{yaw}}} ...')
+
+        self.log(msg_type=cmd_name, msg=f'sending point {{BODY_FIX, x:{x}, y:{y}, z:{z}, yaw:{yaw}}} ...')
         mask = 0b0000_10_0_111_111_000  # _ _ _ _ yaw_rate yaw   force_set   afz afy afx   vz vy vx   z y x
         x, y, z = y, x, -z  # ENU coordinates to NED coordinates
         self._point_reached = False
@@ -386,9 +380,8 @@ class Pioneer:
     def set_manual_speed(self, vx, vy, vz, yaw_rate):
         """ Set manual speed """
         cmd_name = 'MANUAL_SPEED'
-        if self._logger:
-            self.log(msg_type=cmd_name,
-                     msg=f'sending speed {{LOCAL, vx:{vx}, vy:{vy}, vz:{vz}, yaw_rate:{yaw_rate}}} ...')
+
+        self.log(msg_type=cmd_name, msg=f'sending speed {{LOCAL, vx:{vx}, vy:{vy}, vz:{vz}, yaw_rate:{yaw_rate}}} ...')
         mask = 0b0000_01_0_111_000_111  # _ _ _ _ yaw_rate yaw   force_set   afz afy afx   vz vy vx   z y x
         vx, vy, vz = vy, vx, -vz  # ENU coordinates to NED coordinates
         return self._send_position_target_local_ned(command_name=cmd_name,
@@ -398,9 +391,9 @@ class Pioneer:
     def set_manual_speed_body_fixed(self, vx, vy, vz, yaw_rate):
         """ Set manual speed in an external coordinate frame (that of a currently used local navigation system) """
         cmd_name = 'MANUAL_SPEED'
-        if self._logger:
-            self.log(msg_type=cmd_name,
-                     msg=f'sending speed {{BODY_FIX, vx:{vx}, vy:{vy}, vz:{vz}, yaw_rate:{yaw_rate}}} ...')
+
+        self.log(msg_type=cmd_name,
+                 msg=f'sending speed {{BODY_FIX, vx:{vx}, vy:{vy}, vz:{vz}, yaw_rate:{yaw_rate}}} ...')
         mask = 0b0000_01_0_111_000_111  # _ _ _ _ yaw_rate yaw   force_set   afz afy afx   vz vy vx   z y x
         vx, vy, vz = vy, vx, -vz  # ENU coordinates to NED coordinates
         return self._send_position_target_local_ned(command_name=cmd_name,
@@ -471,7 +464,7 @@ class Pioneer:
     def get_preflight_state(self):
         return self._preflight_state
 
-    def get_autopilot_state(self):
+    def get_AUTOPILOT_STATE(self):
         return self._cur_state
 
     def get_autopilot_version(self):
@@ -488,12 +481,12 @@ class Pioneer:
                 if event.is_set():
                     msg = self.msg_archive['AUTOPILOT_VERSION']['msg']
                     self.msg_archive['AUTOPILOT_VERSION']['is_read'].set()
-                    if self._logger:
-                        self.log(msg_type='AUTOPILOT_VERSION',
-                                 msg=str([msg.flight_sw_version, msg.board_version, msg.flight_custom_version]))
+
+                    self.log(msg_type='AUTOPILOT_VERSION',
+                             msg=str([msg.flight_sw_version, msg.board_version, msg.flight_custom_version]))
                     return [msg.flight_sw_version, msg.board_version, msg.flight_custom_version]
-            if self._logger:
-                self.log(msg_type='AUTOPILOT_VERSION', msg='send timeout')
+
+            self.log(msg_type='AUTOPILOT_VERSION', msg='send timeout')
             return None, None
         finally:
             if 'AUTOPILOT_VERSION' in self.wait_msg:
