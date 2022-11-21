@@ -11,4 +11,7 @@ if __name__ == '__main__':
                 pioneer_mini.lua_script_control('Stop')
     except KeyboardInterrupt:
         pioneer_mini.lua_script_control('Stop')
+        
+        pioneer_mini.close_connection()
+        del pioneer_mini
 

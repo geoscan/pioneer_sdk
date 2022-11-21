@@ -50,4 +50,7 @@ if __name__ == '__main__':
             print('esc pressed or mission complete')
             cv2.destroyAllWindows()
             pioneer_mini.land()
+            
+            pioneer_mini.close_connection()
+            del pioneer_mini
             exit(0)
