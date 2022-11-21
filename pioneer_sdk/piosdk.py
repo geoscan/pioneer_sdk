@@ -46,14 +46,11 @@ class Pioneer:
         24: 'ON_DEMAND'
     }
 
+    _supported_connection_methods = ['udpin', 'udpout', 'serial']
+
     def __init__(self, name='pioneer', ip='192.168.4.1', mavlink_port=8001, connection_method='udpout',
                  device='/dev/serial0', baud=115200,
                  logger=True, log_connection=True):
-        # connection_method:
-        # 'udpin': 0
-        # 'serial': 1
-        # 'udpout': 2
-
 
         self.name = name
 
@@ -83,25 +80,16 @@ class Pioneer:
                                      RcMode=None,
                                      RcUnexpected=None,
                                      UavStartAllowed=None)
-        self.mavlink_socket = None
-        # connection_method:
-        # 'udpin': 0
-        # 'serial': 1
-        # 'udpout': 2
-        try:
-            # Support both numbers and words for backward compatibility
-            if connection_method == 'udpin' or connection_method == 0:
-                self.mavlink_socket = mavutil.mavlink_connection('udpin:%s:%s' % (ip, mavlink_port))
-            elif connection_method == 'udpout' or connection_method == 2:
-                self.mavlink_socket = mavutil.mavlink_connection('udpout:%s:%s' % (ip, mavlink_port))
-            elif connection_method == 'serial' or connection_method == 1:
-                self.mavlink_socket = mavutil.mavlink_connection(device=device, baud=baud)
-            else:
-                print(f"Unknown connection method: {connection_method}")
-                sys.exit()
-        except socket.error as e:
-            print('Connection error. Can not connect to drone')
-            sys.exit()
+
+        self.__connection_method = connection_method
+        self.__ip = ip
+        self.__port = mavlink_port
+        self.__device = device
+        self.__baud = baud
+
+        self.mavlink_socket = self._create_connection()
+        self.__is_socket_open = threading.Event()
+        self.__is_socket_open.set()
 
         self.msg_archive = dict()
         self.wait_msg = dict()
@@ -113,13 +101,50 @@ class Pioneer:
         if self._log_connection:
             self.log(msg_type='connection', msg='Connecting to drone...')
 
+    def __del__(self):
+        print("Pioneer class object removed")
+
+    def _create_connection(self):
+        """
+        create mavlink connection
+        :return: mav_socket
+        """
+        if self.__connection_method not in self._supported_connection_methods:
+            print(f"Unknown connection method: {self.__connection_method}")
+            sys.exit()
+
+        mav_socket = None
+        try:
+            if self.__connection_method == "serial":
+                mav_socket = mavutil.mavlink_connection(device=self.__device, baud=self.__baud)
+            else:
+                mav_socket = mavutil.mavlink_connection('%s:%s:%s' % (self.__connection_method, self.__ip, self.__port))
+
+            return mav_socket
+
+        except socket.error as e:
+            print('Connection error. Can not connect to drone')
+            sys.exit()
+
+    def close_connection(self):
+        """
+        Close mavlink connection
+        :return: None
+        """
+        self.__is_socket_open.clear()
+        time.sleep(1)
+        self.mavlink_socket.close()
+
+        if self._log_connection:
+            self.log(msg='Close mavlink socket')
+
     def log(self, msg, msg_type=None):
         if msg_type is None:
             print(f"[{self.name}] {msg}")
         else:
             print(f"[{self.name}] <{msg_type}> {msg}")
 
-    def connected(self):
+    def get_connected_status(self):
         return self._is_connected
 
     def set_logger(self, value: bool = True):
@@ -154,8 +179,12 @@ class Pioneer:
 
     def _message_handler(self):
         while True:
+            if not self.__is_socket_open.is_set():
+                break
+
             if time.time() - self._heartbeat_send_time >= self._heartbeat_timeout:
                 self._send_heartbeat()
+
             msg = self.mavlink_socket.recv_msg()
             if msg is not None:
                 self._last_msg_time = time.time()
@@ -179,14 +208,17 @@ class Pioneer:
                         self._preflight_state.update(RcUnexpected=msg.result_param2 & 0b01000000)
                         self._preflight_state.update(UavStartAllowed=msg.result_param2 & 0b10000000)
 
-
                 if msg.get_type() in self.wait_msg:
                     self.wait_msg[msg.get_type()].set()
                 self.msg_archive.update({msg.get_type(): {'msg': msg, 'is_read': threading.Event()}})
+
             elif self._is_connected and (time.time() - self._last_msg_time > self._is_connected_timeout):
                 self._is_connected = False
                 if self._log_connection:
                     self.log(msg_type='connection', msg='DISCONNECTED')
+
+        if self._logger:
+            self.log(msg="Message handler stopped")
 
     def _send_command_long(self, command_name, command, param1: float = 0, param2: float = 0, param3: float = 0,
                            param4: float = 0, param5: float = 0, param6: float = 0, param7: float = 0,
@@ -288,29 +320,10 @@ class Pioneer:
                                        param1=led_id, param2=r, param3=g, param4=b,
                                        sending_log_msg=f'sending LED_ID={led_id} RGB=({r}, {g}, {b}) ...')
 
-    def raspberry_poweroff(self):
-        return self._send_command_long(command_name='RPi_POWEROFF',
-                                       command=mavutil.mavlink.MAV_CMD_PREFLIGHT_REBOOT_SHUTDOWN,
-                                       target_component=42)
-
-    def raspberry_reboot(self):
-        return self._send_command_long(command_name='RPi_REBOOT',
-                                       command=mavutil.mavlink.MAV_CMD_PREFLIGHT_REBOOT_SHUTDOWN,
-                                       target_component=43)
-
     def reboot_board(self):
         return self._send_command_long(command_name='REBOOT_BOARD',
                                        command=mavutil.mavlink.MAV_CMD_PREFLIGHT_REBOOT_SHUTDOWN,
                                        target_component=1)
-
-    def raspberry_led_custom(self, mode=1, timer=0, color1=(0, 0, 0), color2=(0, 0, 0)):
-        """ Change LED color for device with raspberry pi"""
-        param2 = (((color1[0] << 8) | color1[1]) << 8) | color1[2]
-        param3 = (((color2[0] << 8) | color2[1]) << 8) | color2[2]
-        param5 = mode
-        param6 = timer
-        return self._send_command_long('RPi_LED', mavutil.mavlink.MAV_CMD_USER_3, param2=param2, param3=param3,
-                                       param5=param5, param6=param6, target_system=0, target_component=0)
 
     def _send_position_target_local_ned(self, command_name, coordinate_system, mask=0b0000_11_0_111_111_111, x=0, y=0,
                                         z=0, vx=0, vy=0, vz=0, afx=0, afy=0, afz=0, yaw=0, yaw_rate=0,
@@ -420,7 +433,7 @@ class Pioneer:
             msg_dict = self.msg_archive['DISTANCE_SENSOR']
             if not msg_dict['is_read'].is_set() or (msg_dict['is_read'].is_set() and get_last_received):
                 msg_dict['is_read'].set()
-                return msg_dict['msg'].current_distance/100
+                return msg_dict['msg'].current_distance / 100
             else:
                 return None
         else:
@@ -499,6 +512,25 @@ class Pioneer:
                                                           self.mavlink_socket.target_component, channel_1,
                                                           channel_2, channel_3, channel_4, channel_5, channel_6,
                                                           channel_7, channel_8)
+
+    def raspberry_poweroff(self):
+        return self._send_command_long(command_name='RPi_POWEROFF',
+                                       command=mavutil.mavlink.MAV_CMD_PREFLIGHT_REBOOT_SHUTDOWN,
+                                       target_component=42)
+
+    def raspberry_reboot(self):
+        return self._send_command_long(command_name='RPi_REBOOT',
+                                       command=mavutil.mavlink.MAV_CMD_PREFLIGHT_REBOOT_SHUTDOWN,
+                                       target_component=43)
+
+    def raspberry_led_custom(self, mode=1, timer=0, color1=(0, 0, 0), color2=(0, 0, 0)):
+        """ Change LED color for device with raspberry pi"""
+        param2 = (((color1[0] << 8) | color1[1]) << 8) | color1[2]
+        param3 = (((color2[0] << 8) | color2[1]) << 8) | color2[2]
+        param5 = mode
+        param6 = timer
+        return self._send_command_long('RPi_LED', mavutil.mavlink.MAV_CMD_USER_3, param2=param2, param3=param3,
+                                       param5=param5, param6=param6, target_system=0, target_component=0)
 
     def raspberry_start_capture(self, interval=0.1, total_images=0, sequence_number=0):
         """ Raspberry pi camera start capturing """
