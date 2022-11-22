@@ -105,7 +105,7 @@ class Pioneer:
         :return: mav_socket
         """
         if connection_method not in self._SUPPORTED_CONNECTION_METHODS:
-            raise Exception(f"Unknown connection method: {connection_method}")
+            raise ValueError(f"Unknown connection method: {connection_method}")
 
         mav_socket = None
         try:
@@ -117,7 +117,7 @@ class Pioneer:
             return mav_socket
 
         except socket.error as e:
-            raise Exception('Connection error. Can not connect to drone', e)
+            raise ConnectionError('Connection error. Can not connect to drone', e)
 
     def close_connection(self):
         """
