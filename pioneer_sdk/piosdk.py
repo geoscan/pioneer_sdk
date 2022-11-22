@@ -84,7 +84,7 @@ class Pioneer:
         self.mavlink_socket = self._create_connection(connection_method=connection_method,
                                                       ip=ip, port=mavlink_port,
                                                       device=device, baud=baud)
-        self.__is_socket_open = threading.Event()
+        self.__is_socket_open = threading.Event()  # Flag for the concurrent thread. Signals whether or not the thread should go on running
         self.__is_socket_open.set()
 
         self.msg_archive = dict()
