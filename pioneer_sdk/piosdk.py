@@ -464,7 +464,7 @@ class Pioneer:
     def get_preflight_state(self):
         return self._preflight_state
 
-    def get_AUTOPILOT_STATE(self):
+    def get_autopilot_state(self):
         return self._cur_state
 
     def get_autopilot_version(self):
