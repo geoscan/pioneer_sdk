@@ -19,6 +19,9 @@ def main():
     drone.lua_script_control("Start")
     time.sleep(2)
     drone.lua_script_control("Stop")
+    
+    drone.close_connection()
+    del drone
 
 
 if __name__ == "__main__":

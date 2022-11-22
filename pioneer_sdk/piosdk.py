@@ -8,7 +8,7 @@ import time
 
 
 class Pioneer:
-    mav_result = {
+    MAV_RESULT = {
         -1: 'SEND_TIMEOUT',
         0: 'ACCEPTED',
         1: 'TEMPORARILY_REJECTED',
@@ -18,7 +18,7 @@ class Pioneer:
         5: 'IN_PROGRESS',
         6: 'CANCELLED'
     }
-    autopilot_state = {
+    AUTOPILOT_STATE = {
         0: 'ROOT',
         1: 'DISARMED',
         2: 'IDLE',
@@ -46,14 +46,11 @@ class Pioneer:
         24: 'ON_DEMAND'
     }
 
+    _SUPPORTED_CONNECTION_METHODS = ['udpin', 'udpout', 'serial']
+
     def __init__(self, name='pioneer', ip='192.168.4.1', mavlink_port=8001, connection_method='udpout',
                  device='/dev/serial0', baud=115200,
                  logger=True, log_connection=True):
-        # connection_method:
-        # 'udpin': 0
-        # 'serial': 1
-        # 'udpout': 2
-
 
         self.name = name
 
@@ -83,25 +80,12 @@ class Pioneer:
                                      RcMode=None,
                                      RcUnexpected=None,
                                      UavStartAllowed=None)
-        self.mavlink_socket = None
-        # connection_method:
-        # 'udpin': 0
-        # 'serial': 1
-        # 'udpout': 2
-        try:
-            # Support both numbers and words for backward compatibility
-            if connection_method == 'udpin' or connection_method == 0:
-                self.mavlink_socket = mavutil.mavlink_connection('udpin:%s:%s' % (ip, mavlink_port))
-            elif connection_method == 'udpout' or connection_method == 2:
-                self.mavlink_socket = mavutil.mavlink_connection('udpout:%s:%s' % (ip, mavlink_port))
-            elif connection_method == 'serial' or connection_method == 1:
-                self.mavlink_socket = mavutil.mavlink_connection(device=device, baud=baud)
-            else:
-                print(f"Unknown connection method: {connection_method}")
-                sys.exit()
-        except socket.error as e:
-            print('Connection error. Can not connect to drone')
-            sys.exit()
+
+        self.mavlink_socket = self._create_connection(connection_method=connection_method,
+                                                      ip=ip, port=mavlink_port,
+                                                      device=device, baud=baud)
+        self.__is_socket_open = threading.Event()  # Flag for the concurrent thread. Signals whether or not the thread should go on running
+        self.__is_socket_open.set()
 
         self.msg_archive = dict()
         self.wait_msg = dict()
@@ -110,10 +94,49 @@ class Pioneer:
         self._message_handler_thread.daemon = True
         self._message_handler_thread.start()
 
-        if self._log_connection:
-            self.log(msg_type='connection', msg='Connecting to drone...')
+        self.log(msg_type='connection', msg='Connecting to drone...')
+
+    def __del__(self):
+        self.log(msg="Pioneer class object removed")
+
+    def _create_connection(self, connection_method, ip, port, device, baud):
+        """
+        create mavlink connection
+        :return: mav_socket
+        """
+        if connection_method not in self._SUPPORTED_CONNECTION_METHODS:
+            raise ValueError(f"Unknown connection method: {connection_method}")
+
+        mav_socket = None
+        try:
+            if connection_method == "serial":
+                mav_socket = mavutil.mavlink_connection(device=device, baud=baud)
+            else:
+                mav_socket = mavutil.mavlink_connection('%s:%s:%s' % (connection_method, ip, port))
+
+            return mav_socket
+
+        except socket.error as e:
+            raise ConnectionError('Connection error. Can not connect to drone', e)
+
+    def close_connection(self):
+        """
+        Close mavlink connection
+        :return: None
+        """
+        self.__is_socket_open.clear()
+        self._message_handler_thread.join()
+        self.mavlink_socket.close()
+
+        self.log(msg_type='connection', msg='Close mavlink socket')
 
     def log(self, msg, msg_type=None):
+
+        if msg_type == "connection" and not self._log_connection:
+            return
+        elif msg_type != "connection" and not self._logger:
+            return
+
         if msg_type is None:
             print(f"[{self.name}] {msg}")
         else:
@@ -139,7 +162,7 @@ class Pioneer:
                 custom_mode = msg.custom_mode
                 custom_mode_buf = format(custom_mode, "032b")
                 status_autopilot = custom_mode_buf[24:]
-                self._cur_state = Pioneer.autopilot_state[int(status_autopilot, 2)]
+                self._cur_state = Pioneer.AUTOPILOT_STATE[int(status_autopilot, 2)]
         except Exception:
             pass
 
@@ -148,21 +171,25 @@ class Pioneer:
             self._point_seq = msg.seq
         if msg.seq > self._point_seq:
             self._point_reached = True
-            if self._logger:
-                self.log(msg_type='POINT_REACHED', msg=f'point_id: {msg.seq}')
+
+            self.log(msg_type='POINT_REACHED', msg=f'point_id: {msg.seq}')
         self._point_seq = msg.seq
 
     def _message_handler(self):
         while True:
+            if not self.__is_socket_open.is_set():
+                break
+
             if time.time() - self._heartbeat_send_time >= self._heartbeat_timeout:
                 self._send_heartbeat()
+
             msg = self.mavlink_socket.recv_msg()
             if msg is not None:
                 self._last_msg_time = time.time()
                 if not self._is_connected:
                     self._is_connected = True
-                    if self._log_connection:
-                        self.log(msg_type='connection', msg='CONNECTED')
+
+                    self.log(msg_type='connection', msg='CONNECTED')
                 if msg.get_type() == 'HEARTBEAT':
                     self._receive_heartbeat(msg)
                 elif msg.get_type() == 'MISSION_ITEM_REACHED':
@@ -179,20 +206,22 @@ class Pioneer:
                         self._preflight_state.update(RcUnexpected=msg.result_param2 & 0b01000000)
                         self._preflight_state.update(UavStartAllowed=msg.result_param2 & 0b10000000)
 
-
                 if msg.get_type() in self.wait_msg:
                     self.wait_msg[msg.get_type()].set()
                 self.msg_archive.update({msg.get_type(): {'msg': msg, 'is_read': threading.Event()}})
+
             elif self._is_connected and (time.time() - self._last_msg_time > self._is_connected_timeout):
                 self._is_connected = False
-                if self._log_connection:
-                    self.log(msg_type='connection', msg='DISCONNECTED')
+
+                self.log(msg_type='connection', msg='DISCONNECTED')
+
+        self.log(msg="Message handler stopped")
 
     def _send_command_long(self, command_name, command, param1: float = 0, param2: float = 0, param3: float = 0,
                            param4: float = 0, param5: float = 0, param6: float = 0, param7: float = 0,
                            target_system=None, target_component=None, sending_log_msg='sending...'):
-        if self._logger:
-            self.log(msg_type=command_name, msg=sending_log_msg)
+
+        self.log(msg_type=command_name, msg=sending_log_msg)
         if target_system is None:
             target_system = self.mavlink_socket.target_system
         if target_component is None:
@@ -221,20 +250,17 @@ class Pioneer:
                     self.msg_archive[msg_to_wait]['is_read'].set()
                     if msg.result == 5:  # IN_PROGRESS
                         in_progress = True
-                        if self._logger:
-                            self.log(msg_type=command_name,
-                                     msg=Pioneer.mav_result[msg.result])
+
+                        self.log(msg_type=command_name, msg=Pioneer.MAV_RESULT[msg.result])
                         event.clear()
                     else:
-                        if self._logger:
-                            self.log(msg_type=command_name,
-                                     msg=Pioneer.mav_result[msg.result])
+
+                        self.log(msg_type=command_name, msg=Pioneer.MAV_RESULT[msg.result])
                         return msg.result in [0, 2]
                 else:
                     if_send = True
                 if confirm >= self._mavlink_send_number:
-                    if self._logger:
-                        self.log(msg_type=command_name, msg=Pioneer.mav_result[-1])
+                    self.log(msg_type=command_name, msg=Pioneer.MAV_RESULT[-1])
                     return False
         finally:
             if msg_to_wait in self.wait_msg:
@@ -288,29 +314,10 @@ class Pioneer:
                                        param1=led_id, param2=r, param3=g, param4=b,
                                        sending_log_msg=f'sending LED_ID={led_id} RGB=({r}, {g}, {b}) ...')
 
-    def raspberry_poweroff(self):
-        return self._send_command_long(command_name='RPi_POWEROFF',
-                                       command=mavutil.mavlink.MAV_CMD_PREFLIGHT_REBOOT_SHUTDOWN,
-                                       target_component=42)
-
-    def raspberry_reboot(self):
-        return self._send_command_long(command_name='RPi_REBOOT',
-                                       command=mavutil.mavlink.MAV_CMD_PREFLIGHT_REBOOT_SHUTDOWN,
-                                       target_component=43)
-
     def reboot_board(self):
         return self._send_command_long(command_name='REBOOT_BOARD',
                                        command=mavutil.mavlink.MAV_CMD_PREFLIGHT_REBOOT_SHUTDOWN,
                                        target_component=1)
-
-    def raspberry_led_custom(self, mode=1, timer=0, color1=(0, 0, 0), color2=(0, 0, 0)):
-        """ Change LED color for device with raspberry pi"""
-        param2 = (((color1[0] << 8) | color1[1]) << 8) | color1[2]
-        param3 = (((color2[0] << 8) | color2[1]) << 8) | color2[2]
-        param5 = mode
-        param6 = timer
-        return self._send_command_long('RPi_LED', mavutil.mavlink.MAV_CMD_USER_3, param2=param2, param3=param3,
-                                       param5=param5, param6=param6, target_system=0, target_component=0)
 
     def _send_position_target_local_ned(self, command_name, coordinate_system, mask=0b0000_11_0_111_111_111, x=0, y=0,
                                         z=0, vx=0, vy=0, vz=0, afx=0, afy=0, afz=0, yaw=0, yaw_rate=0,
@@ -332,14 +339,14 @@ class Pioneer:
                     msg = self.msg_archive['POSITION_TARGET_LOCAL_NED']['msg']
                     self.msg_archive['POSITION_TARGET_LOCAL_NED']['is_read'].set()
                     if msg.type_mask == mask:
-                        if self._logger:
-                            self.log(msg_type=command_name, msg=Pioneer.mav_result[0])
+
+                        self.log(msg_type=command_name, msg=Pioneer.MAV_RESULT[0])
                     else:
-                        if self._logger:
-                            self.log(msg_type=command_name, msg=Pioneer.mav_result[2])
+
+                        self.log(msg_type=command_name, msg=Pioneer.MAV_RESULT[2])
                     return True
-            if self._logger:
-                self.log(msg_type=command_name, msg=Pioneer.mav_result[-1])
+
+            self.log(msg_type=command_name, msg=Pioneer.MAV_RESULT[-1])
             return False
         finally:
             if 'POSITION_TARGET_LOCAL_NED' in self.wait_msg:
@@ -348,8 +355,8 @@ class Pioneer:
     def go_to_local_point(self, x, y, z, yaw):
         """ Flight to point in the current navigation system's coordinate frame """
         cmd_name = 'GO_TO_POINT'
-        if self._logger:
-            self.log(msg_type=cmd_name, msg=f'sending point {{LOCAL, x:{x}, y:{y}, z:{z}, yaw:{yaw}}} ...')
+
+        self.log(msg_type=cmd_name, msg=f'sending point {{LOCAL, x:{x}, y:{y}, z:{z}, yaw:{yaw}}} ...')
         mask = 0b0000_10_0_111_111_000  # _ _ _ _ yaw_rate yaw   force_set   afz afy afx   vz vy vx   z y x
         x, y, z = y, x, -z  # ENU coordinates to NED coordinates
         self._point_reached = False
@@ -361,8 +368,8 @@ class Pioneer:
         """ Flight to point relative to the current position """
 
         cmd_name = 'GO_TO_POINT'
-        if self._logger:
-            self.log(msg_type=cmd_name, msg=f'sending point {{BODY_FIX, x:{x}, y:{y}, z:{z}, yaw:{yaw}}} ...')
+
+        self.log(msg_type=cmd_name, msg=f'sending point {{BODY_FIX, x:{x}, y:{y}, z:{z}, yaw:{yaw}}} ...')
         mask = 0b0000_10_0_111_111_000  # _ _ _ _ yaw_rate yaw   force_set   afz afy afx   vz vy vx   z y x
         x, y, z = y, x, -z  # ENU coordinates to NED coordinates
         self._point_reached = False
@@ -373,9 +380,8 @@ class Pioneer:
     def set_manual_speed(self, vx, vy, vz, yaw_rate):
         """ Set manual speed """
         cmd_name = 'MANUAL_SPEED'
-        if self._logger:
-            self.log(msg_type=cmd_name,
-                     msg=f'sending speed {{LOCAL, vx:{vx}, vy:{vy}, vz:{vz}, yaw_rate:{yaw_rate}}} ...')
+
+        self.log(msg_type=cmd_name, msg=f'sending speed {{LOCAL, vx:{vx}, vy:{vy}, vz:{vz}, yaw_rate:{yaw_rate}}} ...')
         mask = 0b0000_01_0_111_000_111  # _ _ _ _ yaw_rate yaw   force_set   afz afy afx   vz vy vx   z y x
         vx, vy, vz = vy, vx, -vz  # ENU coordinates to NED coordinates
         return self._send_position_target_local_ned(command_name=cmd_name,
@@ -385,9 +391,9 @@ class Pioneer:
     def set_manual_speed_body_fixed(self, vx, vy, vz, yaw_rate):
         """ Set manual speed in an external coordinate frame (that of a currently used local navigation system) """
         cmd_name = 'MANUAL_SPEED'
-        if self._logger:
-            self.log(msg_type=cmd_name,
-                     msg=f'sending speed {{BODY_FIX, vx:{vx}, vy:{vy}, vz:{vz}, yaw_rate:{yaw_rate}}} ...')
+
+        self.log(msg_type=cmd_name,
+                 msg=f'sending speed {{BODY_FIX, vx:{vx}, vy:{vy}, vz:{vz}, yaw_rate:{yaw_rate}}} ...')
         mask = 0b0000_01_0_111_000_111  # _ _ _ _ yaw_rate yaw   force_set   afz afy afx   vz vy vx   z y x
         vx, vy, vz = vy, vx, -vz  # ENU coordinates to NED coordinates
         return self._send_position_target_local_ned(command_name=cmd_name,
@@ -420,7 +426,7 @@ class Pioneer:
             msg_dict = self.msg_archive['DISTANCE_SENSOR']
             if not msg_dict['is_read'].is_set() or (msg_dict['is_read'].is_set() and get_last_received):
                 msg_dict['is_read'].set()
-                return msg_dict['msg'].current_distance/100
+                return msg_dict['msg'].current_distance / 100
             else:
                 return None
         else:
@@ -475,12 +481,12 @@ class Pioneer:
                 if event.is_set():
                     msg = self.msg_archive['AUTOPILOT_VERSION']['msg']
                     self.msg_archive['AUTOPILOT_VERSION']['is_read'].set()
-                    if self._logger:
-                        self.log(msg_type='AUTOPILOT_VERSION',
-                                 msg=str([msg.flight_sw_version, msg.board_version, msg.flight_custom_version]))
+
+                    self.log(msg_type='AUTOPILOT_VERSION',
+                             msg=str([msg.flight_sw_version, msg.board_version, msg.flight_custom_version]))
                     return [msg.flight_sw_version, msg.board_version, msg.flight_custom_version]
-            if self._logger:
-                self.log(msg_type='AUTOPILOT_VERSION', msg='send timeout')
+
+            self.log(msg_type='AUTOPILOT_VERSION', msg='send timeout')
             return None, None
         finally:
             if 'AUTOPILOT_VERSION' in self.wait_msg:
@@ -499,6 +505,25 @@ class Pioneer:
                                                           self.mavlink_socket.target_component, channel_1,
                                                           channel_2, channel_3, channel_4, channel_5, channel_6,
                                                           channel_7, channel_8)
+
+    def raspberry_poweroff(self):
+        return self._send_command_long(command_name='RPi_POWEROFF',
+                                       command=mavutil.mavlink.MAV_CMD_PREFLIGHT_REBOOT_SHUTDOWN,
+                                       target_component=42)
+
+    def raspberry_reboot(self):
+        return self._send_command_long(command_name='RPi_REBOOT',
+                                       command=mavutil.mavlink.MAV_CMD_PREFLIGHT_REBOOT_SHUTDOWN,
+                                       target_component=43)
+
+    def raspberry_led_custom(self, mode=1, timer=0, color1=(0, 0, 0), color2=(0, 0, 0)):
+        """ Change LED color for device with raspberry pi"""
+        param2 = (((color1[0] << 8) | color1[1]) << 8) | color1[2]
+        param3 = (((color2[0] << 8) | color2[1]) << 8) | color2[2]
+        param5 = mode
+        param6 = timer
+        return self._send_command_long('RPi_LED', mavutil.mavlink.MAV_CMD_USER_3, param2=param2, param3=param3,
+                                       param5=param5, param6=param6, target_system=0, target_component=0)
 
     def raspberry_start_capture(self, interval=0.1, total_images=0, sequence_number=0):
         """ Raspberry pi camera start capturing """
