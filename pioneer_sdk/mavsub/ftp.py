@@ -8,7 +8,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 from ..generic import Logging
 
 TARGET_NETWORK = 0
-RECV_TIMEOUT_SEC = 2
+RECV_TIMEOUT_SEC = .7
 
 
 class Op:
@@ -224,11 +224,16 @@ class Ftp:
         # 	condition=f"FILE_TRANSFER_PROTOCOL.seq=={self.seq}", blocking=True,
         # 	timeout=RECV_TIMEOUT_SEC)
 
-        msg = self.connection.recv_match(type="FILE_TRANSFER_PROTOCOL", blocking=True, timeout=RECV_TIMEOUT_SEC)
+        message_type = "FILE_TRANSFER_PROTOCOL"
+        msg = self.connection.recv_match(type=message_type, blocking=True,
+            timeout=RECV_TIMEOUT_SEC)
 
         if not msg:
-            Logging.warning(__file__, Ftp, Ftp.receive, "failed to receive", topics=['Conn'])
-            return None
+            try:
+                msg = self.connection.messages.pop(message_type)
+            except KeyError:
+                Logging.warning(__file__, Ftp, Ftp.receive, "failed to receive", topics=['Conn'])
+                msg = None
 
         return msg
 
@@ -505,7 +510,7 @@ class FtpWrapper:
 
     # TODO: as for 2021-09-15, Geoscan MAVLink implementation kicks off file or directory creation/removal requests as those make no sense to the Autopilot. Implement relevant methods if and when it stops being the case
 
-    N_RECEIVE_ATTEMPTS = 2
+    N_RECEIVE_ATTEMPTS = 4
     CHUNK_SIZE = 100
 
     def __init__(self, mavlink_connection, target_network=0):
