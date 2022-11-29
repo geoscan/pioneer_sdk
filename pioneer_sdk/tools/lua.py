@@ -15,6 +15,7 @@ def compile(lua_source) -> str:
     elif os.name == "posix":  # "Linux"
         tool = pathlib.Path("luac")
 
+    tool = str(tool)
     os.system(f"{tool} -s -o {out} {lua_source}")
 
     return pathlib.Path(out)
