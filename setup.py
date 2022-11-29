@@ -7,7 +7,7 @@ setup(
   name='pioneer_sdk',
   packages=['pioneer_sdk', 'pioneer_sdk.mavsub', 'pioneer_sdk.tools'],
   include_package_data=True,
-  version='0.4.4',
+  version='0.4.5',
   license='MIT',
   description='Programming tools for programming geoscan pioneer drone',
   long_description=long_description,
