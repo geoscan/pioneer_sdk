@@ -33,17 +33,6 @@ Since MAVLink description provides no props stipulating particular use-cases,
 the use of the message is subject to interpretation. Here is how the
 communication should be conducted with regard to the implementation.
 
-### Identifiers
-
-The following table contains the values that the on-board MAVLink
-implementation uses for identifying whether or not the message is addressed to
-it.
-
-| Key    | Value                        |
-| -      | -                            |
-| sysid  | 1                            |
-| compid | 240 (MAV_COMP_ID_UDP_BRIDGE) |
-
 ### Change Wi-Fi STA connection.
 
 The UAV (Pioneer Mini, or Pioneer with the ESP32-based extension module)
@@ -69,7 +58,7 @@ sequenceDiagram
 
 #### Disconnect from an access point (STA MODE)
 
-Similar to the connection procedure, but w/ an empty `ssid` field.
+Similar to the connection procedure, but w/ empty `ssid` field.
 
 ```mermaid
 sequenceDiagram
