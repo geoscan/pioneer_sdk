@@ -1,5 +1,6 @@
 from pymavlink import mavutil
 from .mavsub import ftp as mavftp
+from .mavsub import wifi as mavwifi
 from .tools import lua
 import threading
 import socket
@@ -98,6 +99,11 @@ class Pioneer:
 
     def __del__(self):
         self.log(msg="Pioneer class object removed")
+
+    def set_wifi_ap_settings(self, ssid, password):
+        mavlink_wifi = mavwifi.Wifi(self.mavlink_socket)
+        mavlink_wifi.send_wifi_config_ap(ssid, password,
+                                         mode=mavwifi.WIFI_CONFIG_MODE_AP)
 
     def _create_connection(self, connection_method, ip, port, device, baud):
         """
