@@ -30,8 +30,8 @@ Also, for the details of a particular implementation, refer to `./README.md`
 ## Protocol description
 
 Since MAVLink description provides no props stipulating particular use-cases,
-the use of the message is subject to interpretation. Here is how the
-communication should be conducted with regard to the implementation.
+the use of the WIFI_CONFIG_AP message is subject to interpretation. Here is how
+the communication should be conducted with regard to the implementation.
 
 ### Change Wi-Fi STA connection.
 
