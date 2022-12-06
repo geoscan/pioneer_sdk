@@ -13,13 +13,16 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 
 import struct
 from ..generic import Logging
+import pymavlink
 from pymavlink.dialects.v20.common import MAVLink_wifi_config_ap_message
+import pymavlink
 
-RECEIVE_TIMEOUT_SEC = .01
+RECEIVE_TIMEOUT_SEC = .2
 RECEIVE_ATTEMPTS = 6
 RECEIVE_IS_BLOCKING = True
 WIFI_CONFIG_MODE_AP = 1
 WIFI_CONFIG_MODE_STATION = 2
+
 
 
 class WifiConfigApMessage(MAVLink_wifi_config_ap_message):
@@ -37,15 +40,15 @@ class WifiConfigApMessage(MAVLink_wifi_config_ap_message):
     id = 299
     msgname = "WIFI_CONFIG_AP"
     fieldnames = ["ssid", "password", "mode", "response"]
-    ordered_fieldnames = ["ssid", "password"]
-    fieldtypes = ["char", "char", "char", "char"]
+    ordered_fieldnames = ["ssid", "password", "mode", "response"]
+    fieldtypes = ["char", "char", "int8_t", "int8_t"]
     fielddisplays_by_name = {}
     fieldenums_by_name = {}
     fieldunits_by_name = {}
     native_format = bytearray("<ccbb", "ascii")
     orders = [0, 1, 2, 3]
     lengths = [1, 1, 1, 1]
-    array_lengths = [32, 64, 1, 1]
+    array_lengths = [32, 64, 0, 0]
     crc_extra = 19
     unpacker = struct.Struct("<32s64sbb")
     instance_field = None
@@ -61,7 +64,6 @@ class WifiConfigApMessage(MAVLink_wifi_config_ap_message):
                                     self.response)
         return self._pack(mav, self.crc_extra, packed,
                           force_mavlink1=force_mavlink1)
-
 
 
 class Wifi:
