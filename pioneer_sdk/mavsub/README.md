@@ -39,50 +39,90 @@ The UAV (Pioneer Mini, or Pioneer with the ESP32-based extension module)
 provides facilities enabling user to connect the vehicle to an external Wi-Fi
 network, while still having it operating as an access point (AP).
 
+PyMavlink and "Android MAVLink" implementations do not support MAVLink 2.0's
+version of the `WIFI_CONFIG_AP` message. In order to accomodate both AP and
+STA-related functionality within the confinements of the same standard (MAVLink
+1.0), a few alternations to the protocol were made.
+
+A rule-of-thumb-ish description of the protocol implementation:
+
+- Passwords are always hashed w/ MD5
+- On success, the UAV returns the same message, as it has been provided with by
+the user (w/ account for MD5 hashing);
+
 #### Connect to an external access point (STA mode)
 
 ```mermaid
 sequenceDiagram
 	participant UAV
 	participant Cli
-	Cli ->> UAV: WIFI_CONFIG_AP(mode=WIFI_CONFIG_AP_MODE_STATION)
+	Cli ->> UAV: WIFI_CONFIG_AP(ssid=<SSID>, password=<PASSWORD>)
 
-	alt The connection has been successful
-		UAV ->> Cli: WIFI_CONFIG_AP(mode=WIFI_CONFIG_AP_MODE_STATION, response=WIFI_CONFIG_AP_RESPONSE_ACCEPTED)
+	alt Success
+		note over UAV, Cli: Please note that md5 digest is returned, instead of RAW password
+		UAV ->> Cli: WIFI_CONFIG_AP(ssid=<SSID>, password=<md5(PASSWORD)>)
 	end
 
-	alt The connection attempt has failed
-		UAV ->> Cli: WIFI_CONFIG_AP(mode=WIFI_CONFIG_AP_MODE_STATION, response=WIFI_CONFIG_AP_RESPONSE_REJECTED)
+	alt Fail
+		note over UAV, Cli: 0x01 as command code
+		UAV ->> Cli: WIFI_CONFIG_AP(ssid=[0x00, 0x01])
 	end
 ```
 
-#### Disconnect from an access point (STA MODE)
-
-Similar to the connection procedure, but w/ empty `ssid` field.
+#### Disconnect from an external access point (STA mode)
 
 ```mermaid
 sequenceDiagram
 	participant UAV
 	participant Cli
-	note over Cli: Send WIFI_CONFIG_AP w/ an empty SSID
-	Cli ->> UAV: WIFI_CONFIG_AP(mode=WIFI_CONFIG_AP_MODE_STATION, ssid="")
-	UAV ->> Cli: WIFI_CONFIG_AP(mode=WIFI_CONFIG_AP_MODE_STATION, response=WIFI_CONFIG_AP_RESPONSE_ACCEPTED)
+	Cli ->> UAV: WIFI_CONFIG_AP(ssid=[0x00, 0xFF], password=[0x00, 0xFF])
+
+	alt Success
+		UAV ->> Cli: WIFI_CONFIG_AP(ssid=[0x00, 0xFF], password=[0x00, 0xFF])
+	end
+
+	alt Fail
+		note over UAV, Cli: 0x01 as command code
+		UAV ->> Cli: WIFI_CONFIG_AP(ssid=[0x00, 0x02])
+	end
 ```
 
-### Change AP configs (AP mode)
-
-#### Change SSID or password
-
-*As per 2022-12-02, the password changing functionality is yet to be
-implemented. Coming soon.*
+#### Change SSID (AP mode)
 
 ```mermaid
 sequenceDiagram
 	participant UAV
 	participant Cli
-	Cli ->> UAV: WIFI_CONFIG_AP(mode=WIFI_CONFIG_AP_MODE_AP, ssid="Less Than 32 Symbols")
-	UAV ->> Cli: WIFI_CONFIG_AP(mode=WIFI_CONFIG_AP_MODE_AP, response=WIFI_CONFIG_AP_RESPONSE_ACCEPTED)
-````
+	Cli ->> UAV: WIFI_CONFIG_AP(ssid=<SSID>, password=[0x00, 0xFF])
+
+	alt Success
+		note over UAV, Cli: Please note that md5 digest is returned, instead of RAW password
+		UAV ->> Cli: WIFI_CONFIG_AP(ssid=<SSID>, password=[0x00, 0xFF])
+	end
+
+	alt Fail
+		note over Cli, UAV: 0x03 as command code
+		UAV ->> Cli: WIFI_CONFIG_AP(ssid=[0x00, 0x03])
+	end
+```
+#### Change password (AP mode)
+
+```mermaid
+sequenceDiagram
+	participant UAV
+	participant Cli
+	Cli ->> UAV: WIFI_CONFIG_AP(ssid=[0x00, 0xFF], password=<PASSWORD>)
+
+	alt Success
+		note over UAV, Cli: Please note that md5 digest is returned, instead of RAW password
+		UAV ->> Cli: WIFI_CONFIG_AP(ssid=[0x00, 0xFF], password=<md5(PASSWORD)>)
+	end
+
+	alt Fail
+		note over Cli, UAV: 0x04 as command code
+		UAV ->> Cli: WIFI_CONFIG_AP(ssid=[0x00, 0x04])
+	end
+```
 
 #### Request a missing message / get the current config
 
