@@ -13,11 +13,10 @@ STA_REMOTE_PASSWORD = "yourpassword"
 def debug_sleep():
     time.sleep(2)
 
-
-def test_set_ap_name(drone):
-    drone.ap_set_ssid(AP_SSID)
-    debug_sleep()
-    print("Successfully set SSID")
+def test_set_ap_connect_disconnect(drone):
+    if drone.ap_set_ssid(AP_SSID):
+        debug_sleep()
+        print("Successfully set SSID")
 
     if drone.sta_connect(ssid=STA_REMOTE_SSID, password=STA_REMOTE_PASSWORD):
         print("Successfully connected")
@@ -28,7 +27,7 @@ def test_set_ap_name(drone):
 
 def main():
     drone = pioneer_sdk.piosdk.Pioneer()
-    test_set_ap_name(drone)
+    test_set_ap_connect_disconnect(drone)
     drone.close_connection()
 
 
