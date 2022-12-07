@@ -167,7 +167,7 @@ class Wifi:
         """
         assert wifi_config_ap is not None
         received_ssid = bytes(wifi_config_ap.ssid, encoding="ascii")
-        received_password = bytes(wifi_config_ap.password, encoding="ascii")
+        received_password = wifi_config_ap.password
         use_password = (password is not None)
         use_ssid = (ssid is not None)
         is_ok = True
