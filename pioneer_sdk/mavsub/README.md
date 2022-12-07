@@ -38,10 +38,23 @@ provides facilities enabling user to connect the vehicle to an external Wi-Fi
 network, while still having it operating as an access point (AP), or change
 SSID and password of the Wi-Fi Access Point which the UAV serves as.
 
+### Standard / implementation mismatch
+
 PyMavlink and "Android MAVLink" implementations do not support the MAVLink 2.0's
 version of `WIFI_CONFIG_AP` message. In order to accomodate both AP and
 STA-related functionality within the confinements of the same standard (MAVLink
 1.0), a few alternations to the protocol were made.
+
+### Stringified MD5
+
+Stringified MD5 is an ASCII string that mimics HEX number representation.  The
+standard requires `password` field to be of type `char`. MAVLink distinguishes
+between `char` and `int8_t`, hence the use of stringification.
+
+```python
+non_smoker_hex = b"\x00\x01\xfe"
+smoker_hex = "0001fe"
+```
 
 ### Connect to an external access point (STA mode)
 
@@ -52,8 +65,8 @@ sequenceDiagram
 	Cli ->> UAV: WIFI_CONFIG_AP(ssid=<SSID>, password=<PASSWORD>)
 
 	alt Success
-		note over UAV, Cli: Please note that md5 digest is returned, instead of RAW password
-		UAV ->> Cli: WIFI_CONFIG_AP(ssid=<SSID>, password=<md5(PASSWORD)>)
+		note over UAV, Cli: Please note that stringified_md5 digest is returned, instead of RAW password
+		UAV ->> Cli: WIFI_CONFIG_AP(ssid=<SSID>, password=<stringified_md5(PASSWORD)>)
 	end
 
 	alt Fail
@@ -89,7 +102,7 @@ sequenceDiagram
 	Cli ->> UAV: WIFI_CONFIG_AP(ssid=<SSID>, password=[0x00, 0xFF])
 
 	alt Success
-		note over UAV, Cli: Please note that md5 digest is returned, instead of RAW password
+		note over UAV, Cli: Please note that stringified_md5 digest is returned, instead of RAW password
 		UAV ->> Cli: WIFI_CONFIG_AP(ssid=<SSID>, password=[0x00, 0xFF])
 	end
 
@@ -108,8 +121,8 @@ sequenceDiagram
 	Cli ->> UAV: WIFI_CONFIG_AP(ssid=[0x00, 0xFF], password=<PASSWORD>)
 
 	alt Success
-		note over UAV, Cli: Please note that md5 digest is returned, instead of RAW password
-		UAV ->> Cli: WIFI_CONFIG_AP(ssid=[0x00, 0xFF], password=<md5(PASSWORD)>)
+		note over UAV, Cli: Please note that stringified_md5 digest is returned, instead of RAW password
+		UAV ->> Cli: WIFI_CONFIG_AP(ssid=[0x00, 0xFF], password=<stringified_md5(PASSWORD)>)
 	end
 
 	alt Fail
@@ -132,7 +145,7 @@ sequenceDiagram
 
 	note over Cli, UAV: 299 maps to`WIFI_CONFIG_AP
 	Cli ->> UAV: MAV_CMD_REQUEST_MESSAGE(param1=299, param2=0)
-	UAV ->> Cli: WIFI_CONFIG_AP(ssid=<SSID>, password=<md5(PASSWORD)>)
+	UAV ->> Cli: WIFI_CONFIG_AP(ssid=<SSID>, password=<stringified_md5(PASSWORD)>)
 ```
 
 ### Request STA status
@@ -146,7 +159,7 @@ sequenceDiagram
 	Cli ->> UAV: MAV_CMD_REQUEST_MESSAGE(param1=299, param2=1)
 
 	alt There is an active connection
-		UAV ->> Cli: WIFI_CONFIG_AP(ssid=<SSID>, password=<md5(PASSWORD)>)
+		UAV ->> Cli: WIFI_CONFIG_AP(ssid=<SSID>, password=<stringified_md5(PASSWORD)>)
 	end
 
 	alt There is no active connection
