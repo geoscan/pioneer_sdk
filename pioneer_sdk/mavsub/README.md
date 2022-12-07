@@ -125,6 +125,42 @@ sequenceDiagram
 	end
 ```
 
+
+### Inquire AP status
+
+A used may send `MAV_CMD_REQUEST_MESSAGE`, to retreive the UAV's current Wi-Fi
+configuration.
+
+#### Request AP status
+
+```mermaid
+sequenceDiagram
+	participant UAV
+	participant Cli
+
+	note over Cli, UAV: 299 maps to`WIFI_CONFIG_AP
+	Cli ->> UAV: MAV_CMD_REQUEST_MESSAGE(param1=299, param2=0)
+	UAV ->> Cli: WIFI_CONFIG_AP(ssid=<SSID>, password=<md5(PASSWORD)>)
+```
+#### Request STA status
+
+```mermaid
+sequenceDiagram
+	participant UAV
+	participant Cli
+
+	note over Cli, UAV: 299 maps to`WIFI_CONFIG_AP
+	Cli ->> UAV: MAV_CMD_REQUEST_MESSAGE(param1=299, param2=1)
+
+	alt There is an active connection
+		UAV ->> Cli: WIFI_CONFIG_AP(ssid=<SSID>, password=<md5(PASSWORD)>)
+	end
+
+	alt There is no active connection
+		UAV ->> Cli: WIFI_CONFIG_AP(ssid=[], password=[])
+	end
+```
+
 #### Request a missing message / get the current config
 
 What to do if a response message has been missed.
