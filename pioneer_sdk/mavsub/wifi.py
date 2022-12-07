@@ -73,7 +73,7 @@ class Wifi:
     ETL-encapsulating convenience wrapper
     """
 
-    _FIELD_MOCK_PLACEHOLDER = b"\x00\xff"
+    _FIELD_MOCK_PLACEHOLDER = bytes([0x00, 0xFF])
 
     def __init__(self, connection):
         self.connection = connection
@@ -165,14 +165,23 @@ class Wifi:
         a failure of the request complementary to the response.
         """
         assert wifi_config_ap is not None
-        ssid = Wifi._ssid_ensure_format(ssid)
-        password = Wifi._password_ensure_format(password)
+        received_ssid = bytes(wifi_config_ap.ssid, encoding="ascii")
+        received_password = bytes(wifi_config_ap.password, encoding="ascii")
+        use_password = (password is not None)
+        use_ssid = (ssid is not None)
+        is_ok = True
 
-        if password != Wifi._FIELD_MOCK_PLACEHOLDER:
-            password = hashlib.md5(password).hexdigest()
+        if use_ssid:
+            ssid = Wifi._ssid_ensure_format(ssid)
+            is_ok = is_ok and ssid == received_ssid
 
-        is_ok = wifi_config_ap.ssid == ssid \
-            and wifi_config_ap.password == password
+        if use_password:
+            password = Wifi._password_ensure_format(password)
+
+            if password != Wifi._FIELD_MOCK_PLACEHOLDER:
+                password = hashlib.md5(password).hexdigest()
+
+            is_ok = is_ok and password == received_password
 
         return is_ok
 
@@ -206,9 +215,13 @@ class Wifi:
             response = self.receive_wifi_config_ap()
 
             if response is not None:
-                # TODO request missing message
-                return self.wifi_config_ap_response_ap_set_ssid_is_ok(
+                ret = self.wifi_config_ap_response_ap_set_ssid_is_ok(
                     response, ssid=ssid)
+
+                if not ret:
+                    Logging.warning(Wifi, "failed to set SSID", response)
+
+                return ret
 
         Logging.warning(Wifi, "failed to receive in", SEND_RECEIVE_ATTEMPTS,
                         "attempts")
@@ -224,9 +237,13 @@ class Wifi:
             response = self.receive_wifi_config_ap()
 
             if response is not None:
-                # TODO request missing message
-                return self.wifi_config_ap_response_ap_set_password_is_ok(
+                ret = self.wifi_config_ap_response_ap_set_password_is_ok(
                     response, password=password)
+
+                if not ret:
+                    Logging.warning(Wifi, "failed to set password")
+
+                return ret
 
         Logging.warning(Wifi, "failed to receive in", SEND_RECEIVE_ATTEMPTS,
                         "attempts")
@@ -242,9 +259,13 @@ class Wifi:
             response = self.receive_wifi_config_ap()
 
             if response is not None:
-                # TODO request missing message
-                return self.wifi_config_ap_response_connect_is_ok(
+                ret = self.wifi_config_ap_response_connect_is_ok(
                     response, ssid=ssid, password=password)
+
+                if not ret:
+                    Logging.warning(Wifi, "failed to connect to an AP")
+
+                return ret
 
         Logging.warning(Wifi, "failed to receive in", SEND_RECEIVE_ATTEMPTS,
                         "attempts")
@@ -260,9 +281,12 @@ class Wifi:
             response = self.receive_wifi_config_ap()
 
             if response is not None:
-                # TODO request missing message
-                return self.wifi_config_ap_response_disconnect_is_ok(response)
-            return False
+                ret = self.wifi_config_ap_response_disconnect_is_ok(response)
+
+                if not ret:
+                    Logging.warning(Wifi, "failed to disconnect from an AP")
+
+                return ret
 
         Logging.warning(Wifi, "failed to receive in", SEND_RECEIVE_ATTEMPTS,
                         "attempts")
