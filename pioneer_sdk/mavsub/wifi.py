@@ -117,6 +117,9 @@ class Wifi:
             ssid = bytes(ssid, encoding="ascii")
             ssid = ssid[:SSID_MAX_LEN]
 
+        return ssid
+
+    @staticmethod
     def _password_ensure_format(password):
         """
         Ensures that password is of correct binary format.
@@ -128,6 +131,8 @@ class Wifi:
             password = Wifi._FIELD_MOCK_PLACEHOLDER
         else:
             password = password[:PASSWORD_MAX_LEN]
+
+        return password
 
     def send_wifi_config_ap(self, ssid, password):
         """
