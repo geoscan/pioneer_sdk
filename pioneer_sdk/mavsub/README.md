@@ -29,8 +29,9 @@ More: http://mavlink.io/en/messages/common.html#WIFI_CONFIG_AP
 ## Protocol description
 
 Since MAVLink description provides no props stipulating particular use-cases,
-the use of the WIFI_CONFIG_AP message is subject to interpretation. Here is how
-the communication should be conducted with regard to the implementation.
+some aspects of the use of WIFI_CONFIG_AP message are subject to interpretation.
+Here is how the communication should be conducted with regard to the
+implementation.
 
 The UAV (Pioneer Mini, or Pioneer with the ESP32-based extension module)
 provides facilities enabling user to connect the vehicle to an external Wi-Fi
@@ -41,12 +42,6 @@ PyMavlink and "Android MAVLink" implementations do not support the MAVLink 2.0's
 version of `WIFI_CONFIG_AP` message. In order to accomodate both AP and
 STA-related functionality within the confinements of the same standard (MAVLink
 1.0), a few alternations to the protocol were made.
-
-A rule-of-thumb-ish description of the protocol implementation:
-
-- Passwords are always hashed w/ MD5
-- On success, the UAV returns the same message it has been sent (w/ account for
-MD5 hashing);
 
 ### Connect to an external access point (STA mode)
 
