@@ -55,8 +55,8 @@ the user (w/ account for MD5 hashing);
 
 ```mermaid
 sequenceDiagram
-	participant UAV
 	participant Cli
+	participant UAV
 	Cli ->> UAV: WIFI_CONFIG_AP(ssid=<SSID>, password=<PASSWORD>)
 
 	alt Success
@@ -74,8 +74,8 @@ sequenceDiagram
 
 ```mermaid
 sequenceDiagram
-	participant UAV
 	participant Cli
+	participant UAV
 	Cli ->> UAV: WIFI_CONFIG_AP(ssid=[0x00, 0xFF], password=[0x00, 0xFF])
 
 	alt Success
@@ -92,8 +92,8 @@ sequenceDiagram
 
 ```mermaid
 sequenceDiagram
-	participant UAV
 	participant Cli
+	participant UAV
 	Cli ->> UAV: WIFI_CONFIG_AP(ssid=<SSID>, password=[0x00, 0xFF])
 
 	alt Success
@@ -110,8 +110,8 @@ sequenceDiagram
 
 ```mermaid
 sequenceDiagram
-	participant UAV
 	participant Cli
+	participant UAV
 	Cli ->> UAV: WIFI_CONFIG_AP(ssid=[0x00, 0xFF], password=<PASSWORD>)
 
 	alt Success
@@ -135,8 +135,8 @@ configuration.
 
 ```mermaid
 sequenceDiagram
-	participant UAV
 	participant Cli
+	participant UAV
 
 	note over Cli, UAV: 299 maps to`WIFI_CONFIG_AP
 	Cli ->> UAV: MAV_CMD_REQUEST_MESSAGE(param1=299, param2=0)
@@ -146,8 +146,8 @@ sequenceDiagram
 
 ```mermaid
 sequenceDiagram
-	participant UAV
 	participant Cli
+	participant UAV
 
 	note over Cli, UAV: 299 maps to`WIFI_CONFIG_AP
 	Cli ->> UAV: MAV_CMD_REQUEST_MESSAGE(param1=299, param2=1)
@@ -160,9 +160,3 @@ sequenceDiagram
 		UAV ->> Cli: WIFI_CONFIG_AP(ssid=[], password=[])
 	end
 ```
-
-#### Request a missing message / get the current config
-
-What to do if a response message has been missed.
-
-*Coming soon*
