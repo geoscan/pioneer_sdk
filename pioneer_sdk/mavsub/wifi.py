@@ -238,7 +238,7 @@ class Wifi:
 
                 return ret
 
-        Logging.warning(Wifi, "failed to receive in", SEND_RECEIVE_ATTEMPTS,
+        Logging.error(Wifi, "failed to receive in", SEND_RECEIVE_ATTEMPTS,
                         "attempts")
 
         return False
@@ -260,7 +260,7 @@ class Wifi:
 
                 return ret
 
-        Logging.warning(Wifi, "failed to receive in", SEND_RECEIVE_ATTEMPTS,
+        Logging.error(Wifi, "failed to receive in", SEND_RECEIVE_ATTEMPTS,
                         "attempts")
 
         return False
