@@ -128,7 +128,7 @@ sequenceDiagram
 
 ### Inquire AP status
 
-A used may send `MAV_CMD_REQUEST_MESSAGE`, to retreive the UAV's current Wi-Fi
+A used may send `MAV_CMD_REQUEST_MESSAGE`, to retrieve the UAV's current Wi-Fi
 configuration.
 
 #### Request AP status
