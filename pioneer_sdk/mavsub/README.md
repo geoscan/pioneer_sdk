@@ -37,16 +37,16 @@ provides facilities enabling user to connect the vehicle to an external Wi-Fi
 network, while still having it operating as an access point (AP), or change
 SSID and password of the Wi-Fi Access Point which the UAV serves as.
 
-PyMavlink and "Android MAVLink" implementations do not support MAVLink 2.0's
-version of the `WIFI_CONFIG_AP` message. In order to accomodate both AP and
+PyMavlink and "Android MAVLink" implementations do not support the MAVLink 2.0's
+version of `WIFI_CONFIG_AP` message. In order to accomodate both AP and
 STA-related functionality within the confinements of the same standard (MAVLink
 1.0), a few alternations to the protocol were made.
 
 A rule-of-thumb-ish description of the protocol implementation:
 
 - Passwords are always hashed w/ MD5
-- On success, the UAV returns the same message, as it has been provided with by
-the user (w/ account for MD5 hashing);
+- On success, the UAV returns the same message it has been sent (w/ account for
+MD5 hashing);
 
 ### Connect to an external access point (STA mode)
 
