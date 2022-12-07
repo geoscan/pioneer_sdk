@@ -19,6 +19,7 @@ import hashlib
 
 RECEIVE_TIMEOUT_SEC = .2
 RECEIVE_ATTEMPTS = 8
+SEND_RECEIVE_ATTEMPTS = 2
 RECEIVE_IS_BLOCKING = True
 WIFI_CONFIG_MODE_AP = 1
 WIFI_CONFIG_MODE_STATION = 2
@@ -199,13 +200,18 @@ class Wifi:
         """
         Sets the AP's SSID
         """
-        self.send_ap_ssid(ssid)
-        response = self.receive_wifi_config_ap()
 
-        if response is not None:
-            # TODO request missing message
-            return self.wifi_config_ap_response_ap_set_ssid_is_ok(
-                response, ssid=ssid)
+        for _ in range(SEND_RECEIVE_ATTEMPTS):
+            self.send_ap_ssid(ssid)
+            response = self.receive_wifi_config_ap()
+
+            if response is not None:
+                # TODO request missing message
+                return self.wifi_config_ap_response_ap_set_ssid_is_ok(
+                    response, ssid=ssid)
+
+        Logging.warning(Wifi, "failed to receive in", SEND_RECEIVE_ATTEMPTS,
+                        "attempts")
 
         return False
 
@@ -213,13 +219,17 @@ class Wifi:
         """
         Sets the AP's password
         """
-        self.send_ap_password(password)
-        response = self.receive_wifi_config_ap()
+        for _ in range(SEND_RECEIVE_ATTEMPTS):
+            self.send_ap_password(password)
+            response = self.receive_wifi_config_ap()
 
-        if response is not None:
-            # TODO request missing message
-            return self.wifi_config_ap_response_ap_set_password_is_ok(
-                response, password=password)
+            if response is not None:
+                # TODO request missing message
+                return self.wifi_config_ap_response_ap_set_password_is_ok(
+                    response, password=password)
+
+        Logging.warning(Wifi, "failed to receive in", SEND_RECEIVE_ATTEMPTS,
+                        "attempts")
 
         return False
 
@@ -227,13 +237,17 @@ class Wifi:
         """
         Makes an attempt to connect the UAV to a remote AP
         """
-        self.send_sta_connect(ssid, password)
-        response = self.receive_wifi_config_ap()
+        for _ in range(SEND_RECEIVE_ATTEMPTS):
+            self.send_sta_connect(ssid, password)
+            response = self.receive_wifi_config_ap()
 
-        if response is not None:
-            # TODO request missing message
-            return self.wifi_config_ap_response_connect_is_ok(
-                response, ssid=ssid, password=password)
+            if response is not None:
+                # TODO request missing message
+                return self.wifi_config_ap_response_connect_is_ok(
+                    response, ssid=ssid, password=password)
+
+        Logging.warning(Wifi, "failed to receive in", SEND_RECEIVE_ATTEMPTS,
+                        "attempts")
 
         return False
 
@@ -241,10 +255,17 @@ class Wifi:
         """
         Disconnects the UAV from whatever AP it happens to be connected to
         """
-        self.send_sta_disconnect()
-        response = self.receive_wifi_config_ap()
+        for _ in range(SEND_RECEIVE_ATTEMPTS):
+            self.send_sta_disconnect()
+            response = self.receive_wifi_config_ap()
 
-        if response is not None:
-            # TODO request missing message
-            return self.wifi_config_ap_response_disconnect_is_ok(response)
+            if response is not None:
+                # TODO request missing message
+                return self.wifi_config_ap_response_disconnect_is_ok(response)
+            return False
+
+        Logging.warning(Wifi, "failed to receive in", SEND_RECEIVE_ATTEMPTS,
+                        "attempts")
+
         return False
+
