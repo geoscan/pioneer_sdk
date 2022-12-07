@@ -37,7 +37,8 @@ the communication should be conducted with regard to the implementation.
 
 The UAV (Pioneer Mini, or Pioneer with the ESP32-based extension module)
 provides facilities enabling user to connect the vehicle to an external Wi-Fi
-network, while still having it operating as an access point (AP).
+network, while still having it operating as an access point (AP), or change
+SSID and password of the Wi-Fi Access Point which the UAV serves as.
 
 PyMavlink and "Android MAVLink" implementations do not support MAVLink 2.0's
 version of the `WIFI_CONFIG_AP` message. In order to accomodate both AP and
@@ -82,7 +83,7 @@ sequenceDiagram
 	end
 
 	alt Fail
-		note over UAV, Cli: 0x01 as command code
+		note over UAV, Cli: 0x02 as command code
 		UAV ->> Cli: WIFI_CONFIG_AP(ssid=[0x00, 0x02])
 	end
 ```
