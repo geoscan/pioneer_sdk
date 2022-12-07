@@ -131,6 +131,7 @@ class Wifi:
         if password is None:
             password = Wifi._FIELD_MOCK_PLACEHOLDER
         else:
+            password = bytes(password, encoding="ascii")
             password = password[:PASSWORD_MAX_LEN]
 
         return password
