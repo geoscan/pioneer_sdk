@@ -149,7 +149,7 @@ class Wifi:
     def send_sta_connect(self, ssid, password):
         self.send_wifi_config_ap(ssid=ssid, password=password)
 
-    def send_sta_disconnect(self, ssid, password):
+    def send_sta_disconnect(self):
         self.send_wifi_config_ap(ssid=None, password=None)
 
     def send_ap_ssid(self, ssid):
