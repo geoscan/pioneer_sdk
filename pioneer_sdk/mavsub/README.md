@@ -21,19 +21,16 @@ fact that the implementation you create is not generic.
 
 # `wifi.py`
 
-Enables control over the vehicle Wi-Fi configurations over MAVLink protocol.
+Enables control over the vehicle Wi-Fi configurations using MAVLink protocol.
 The API is quite succinct, as it is built around just one message:
 `WIFI_CONFIG_AP`.
 More: http://mavlink.io/en/messages/common.html#WIFI_CONFIG_AP
-Also, for the details of a particular implementation, refer to `./README.md`
 
 ## Protocol description
 
 Since MAVLink description provides no props stipulating particular use-cases,
 the use of the WIFI_CONFIG_AP message is subject to interpretation. Here is how
 the communication should be conducted with regard to the implementation.
-
-### Change Wi-Fi STA connection.
 
 The UAV (Pioneer Mini, or Pioneer with the ESP32-based extension module)
 provides facilities enabling user to connect the vehicle to an external Wi-Fi
@@ -51,7 +48,7 @@ A rule-of-thumb-ish description of the protocol implementation:
 - On success, the UAV returns the same message, as it has been provided with by
 the user (w/ account for MD5 hashing);
 
-#### Connect to an external access point (STA mode)
+### Connect to an external access point (STA mode)
 
 ```mermaid
 sequenceDiagram
@@ -70,7 +67,7 @@ sequenceDiagram
 	end
 ```
 
-#### Disconnect from an external access point (STA mode)
+### Disconnect from an external access point (STA mode)
 
 ```mermaid
 sequenceDiagram
@@ -88,7 +85,7 @@ sequenceDiagram
 	end
 ```
 
-#### Change SSID (AP mode)
+### Change SSID (AP mode)
 
 ```mermaid
 sequenceDiagram
@@ -106,7 +103,8 @@ sequenceDiagram
 		UAV ->> Cli: WIFI_CONFIG_AP(ssid=[0x00, 0x03])
 	end
 ```
-#### Change password (AP mode)
+
+### Change password (AP mode)
 
 ```mermaid
 sequenceDiagram
@@ -126,12 +124,11 @@ sequenceDiagram
 ```
 
 
-### Inquire AP status
+### Request AP status
 
-A used may send `MAV_CMD_REQUEST_MESSAGE`, to retrieve the UAV's current Wi-Fi
+A user may send `MAV_CMD_REQUEST_MESSAGE`, to retrieve the UAV's current Wi-Fi
 configuration.
 
-#### Request AP status
 
 ```mermaid
 sequenceDiagram
@@ -142,7 +139,8 @@ sequenceDiagram
 	Cli ->> UAV: MAV_CMD_REQUEST_MESSAGE(param1=299, param2=0)
 	UAV ->> Cli: WIFI_CONFIG_AP(ssid=<SSID>, password=<md5(PASSWORD)>)
 ```
-#### Request STA status
+
+### Request STA status
 
 ```mermaid
 sequenceDiagram
