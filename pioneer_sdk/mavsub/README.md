@@ -47,12 +47,15 @@ STA-related functionality within the confinements of the same standard (MAVLink
 
 ### Stringified MD5
 
-Stringified MD5 is an ASCII string that mimics HEX number representation.  The
-standard requires `password` field to be of type `char`. MAVLink distinguishes
-between `char` and `int8_t`, hence the use of stringification.
+Stringified MD5 is an ASCII string that mimics HEX representation.  The standard
+requires `password` field to be of type `char`. MAVLink distinguishes between
+`char` and `int8_t`, hence the use of stringification.
 
 ```python
+# Non-stringified HEX
 non_smoker_hex = b"\x00\x01\xfe"
+
+# Stringified HEX
 smoker_hex = "0001fe"
 ```
 
