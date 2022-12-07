@@ -174,7 +174,14 @@ class Wifi:
 
         if use_ssid:
             ssid = Wifi._ssid_ensure_format(ssid)
-            is_ok = is_ok and ssid == received_ssid
+            ssid_ok = (received_ssid == ssid)
+
+            if not ssid_ok:
+                Logging.warning(__file__, Wifi,
+                                f"received SSID {received_ssid} " \
+                                f"is not equal to expected SSID {ssid}")
+
+            is_ok = is_ok and ssid_ok
 
         if use_password:
             password = Wifi._password_ensure_format(password)
@@ -182,7 +189,14 @@ class Wifi:
             if password != Wifi._FIELD_MOCK_PLACEHOLDER:
                 password = hashlib.md5(password).hexdigest()
 
-            is_ok = is_ok and password == received_password
+            password_ok = (password == received_password)
+
+            if not password_ok:
+                Logging.warning(__file__, Wifi, f"received password digest " \
+                                f"{received_password} is not equal to expected " \
+                                f"password digest {password}")
+
+            is_ok = is_ok and password_ok
 
         return is_ok
 
@@ -293,4 +307,3 @@ class Wifi:
                         "attempts")
 
         return False
-
