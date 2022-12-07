@@ -18,7 +18,7 @@ import pymavlink
 import hashlib
 
 RECEIVE_TIMEOUT_SEC = .2
-RECEIVE_ATTEMPTS = 20
+RECEIVE_ATTEMPTS = 8
 RECEIVE_IS_BLOCKING = True
 WIFI_CONFIG_MODE_AP = 1
 WIFI_CONFIG_MODE_STATION = 2
@@ -204,7 +204,8 @@ class Wifi:
 
         if response is not None:
             # TODO request missing message
-            return self.wifi_config_ap_response_ap_set_ssid_is_ok(response)
+            return self.wifi_config_ap_response_ap_set_ssid_is_ok(
+                response, ssid=ssid)
 
         return False
 
@@ -217,7 +218,8 @@ class Wifi:
 
         if response is not None:
             # TODO request missing message
-            return self.wifi_config_ap_response_ap_set_password_is_ok(response)
+            return self.wifi_config_ap_response_ap_set_password_is_ok(
+                response, password=password)
 
         return False
 
@@ -230,7 +232,8 @@ class Wifi:
 
         if response is not None:
             # TODO request missing message
-            return self.wifi_config_ap_response_connect_is_ok(response)
+            return self.wifi_config_ap_response_connect_is_ok(
+                response, ssid=ssid, password=password)
 
         return False
 
@@ -244,5 +247,4 @@ class Wifi:
         if response is not None:
             # TODO request missing message
             return self.wifi_config_ap_response_disconnect_is_ok(response)
-
         return False
