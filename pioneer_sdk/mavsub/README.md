@@ -61,6 +61,12 @@ smoker_hex = "0001fe"
 
 ### Connect to an external access point (STA mode)
 
+On Pioneer and Pioneer Mini, issuing the "connect" command will make the Wi-Fi
+module to remembed the last AP it has connected to, in case if the attempt was
+successful, and the copter will make the attempt to connect to an Access point.
+
+Alternatively, calling "disconnect" disables auto-connection.
+
 ```mermaid
 sequenceDiagram
 	participant Cli
@@ -69,6 +75,7 @@ sequenceDiagram
 
 	alt Success
 		note over UAV, Cli: Please note that stringified_md5 digest is returned, instead of RAW password
+		UAV ->> UAV: ENABLE autoconnect on the next boot up
 		UAV ->> Cli: WIFI_CONFIG_AP(ssid=<SSID>, password=<stringified_md5(PASSWORD)>)
 	end
 
@@ -85,6 +92,7 @@ sequenceDiagram
 	participant Cli
 	participant UAV
 	Cli ->> UAV: WIFI_CONFIG_AP(ssid=[0x00, 0xFF], password=[0x00, 0xFF])
+	UAV ->> UAV: DISABLE autoconnect on the next boot up
 
 	alt Success
 		UAV ->> Cli: WIFI_CONFIG_AP(ssid=[0x00, 0xFF], password=[0x00, 0xFF])
