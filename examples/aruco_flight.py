@@ -92,4 +92,6 @@ if __name__ == '__main__':
         if key == 27:  # Exit if the ESC key is pressed
             cv2.destroyAllWindows()
             mini.land()
+            mini.close_connection()
+            del mini
             break

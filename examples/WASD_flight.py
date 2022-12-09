@@ -1,10 +1,8 @@
-import time
-
 from pioneer_sdk import Pioneer, Camera
 import cv2
 import numpy as np
+import time
 
-rc_speak = False
 if __name__ == '__main__':
     print('''
     1 -- arm
@@ -75,6 +73,6 @@ if __name__ == '__main__':
     finally:
         time.sleep(1)
         pioneer_mini.land()
-        
+
         pioneer_mini.close_connection()
         del pioneer_mini
