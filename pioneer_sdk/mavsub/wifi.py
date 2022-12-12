@@ -25,6 +25,10 @@ WIFI_CONFIG_MODE_AP = 1
 WIFI_CONFIG_MODE_STATION = 2
 PASSWORD_MAX_LEN = 64
 SSID_MAX_LEN = 32
+WIFI_CMD_REQUEST_MESSAGE_PARAM_2_AP = 0
+WIFI_CMD_REQUEST_MESSAGE_PARAM_2_STA = 1
+WIFI_CMD_TARGET_COMPONENT = pymavlink.dialects.v20.common.MAV_COMP_ID_UDP_BRIDGE
+WIFI_CMD_TARGET_SYSTEM = 1
 
 
 class WifiConfigApMessage(MAVLink_wifi_config_ap_message):
@@ -307,3 +311,41 @@ class Wifi:
                         "attempts")
 
         return False
+
+    def _try_get_status(self, param2=WIFI_CMD_REQUEST_MESSAGE_PARAM_2_AP):
+        """
+        Makes an attempt to acquire the STA's current SSID and password.
+        Please note that the password will be represented as an MD5 stringified
+        digest.
+
+        On success, returns (SSID, password) pair. (None, None) otherwise.
+        """
+        msgid = pymavlink.dialects.v20.common.MAVLINK_MSG_ID_WIFI_CONFIG_AP
+        command = pymavlink.dialects.v20.common.MAV_CMD_REQUEST_MESSAGE
+        ssid = None
+        password = None
+
+        for i in range(SEND_RECEIVE_ATTEMPTS):
+            self.connection.mav.command_long_send(
+                target_system=WIFI_CMD_TARGET_SYSTEM,
+                target_component=WIFI_CMD_TARGET_COMPONENT, command=command,
+                confirmation=i, param1=msgid, param2=param2, param3=0, param4=0,
+                param5=0, param6=0, param7=0)
+            response = self.receive_wifi_config_ap()
+
+            if response is not None:
+                ssid = response.ssid
+                password = response.password
+
+        if ssid is None:
+            Logging.warning(Wifi,
+                "failed to receive requested WIFI_CONFIG_AP message in ",
+                SEND_RECEIVE_ATTEMPTS, "attempts")
+
+        return ssid, password
+
+    def try_get_sta_status(self):
+        return self._try_get_status(param2=WIFI_CMD_REQUEST_MESSAGE_PARAM_2_STA)
+
+    def try_get_ap_status(self):
+        return self._try_get_status(param2=WIFI_CMD_REQUEST_MESSAGE_PARAM_2_AP)
