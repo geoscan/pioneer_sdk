@@ -17,9 +17,9 @@ from pymavlink.dialects.v20.common import MAVLink_wifi_config_ap_message
 import pymavlink
 import hashlib
 
-RECEIVE_TIMEOUT_SEC = .2
+RECEIVE_TIMEOUT_SEC = .3
 RECEIVE_ATTEMPTS = 20
-SEND_RECEIVE_ATTEMPTS = 2
+SEND_RECEIVE_ATTEMPTS = 3
 RECEIVE_IS_BLOCKING = True
 WIFI_CONFIG_MODE_AP = 1
 WIFI_CONFIG_MODE_STATION = 2
