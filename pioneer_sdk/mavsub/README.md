@@ -156,7 +156,14 @@ sequenceDiagram
 
 	note over Cli, UAV: 299 maps to`WIFI_CONFIG_AP
 	Cli ->> UAV: MAV_CMD_REQUEST_MESSAGE(param1=299, param2=0)
-	UAV ->> Cli: WIFI_CONFIG_AP(ssid=<SSID>, password=<stringified_md5(PASSWORD)>)
+
+	alt Wi-Fi module is used as AP
+		UAV ->> Cli: WIFI_CONFIG_AP(ssid=<SSID>, password=<stringified_md5(PASSWORD)>)
+	end
+
+	alt Wi-Fi module is not used as AP
+		UAV ->> Cli: WIFI_CONFIG_AP(ssid=[], password=[])
+	end
 ```
 
 ### Request STA status
