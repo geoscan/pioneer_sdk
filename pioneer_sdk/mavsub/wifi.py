@@ -140,7 +140,7 @@ class Wifi:
 
         return password
 
-    def send_wifi_config_ap(self, ssid, password):
+    def _send_wifi_config_ap(self, ssid, password):
         """
         Basic boilerplate-reducing wrapper. Performs formattings, and
         ensures consistency w/ the protocol implementation that is being used.
@@ -151,19 +151,19 @@ class Wifi:
         self.connection.mav.send(wifi_config_ap_msg)
 
     def send_sta_connect(self, ssid, password):
-        self.send_wifi_config_ap(ssid=ssid, password=password)
+        self._send_wifi_config_ap(ssid=ssid, password=password)
 
     def send_sta_disconnect(self):
-        self.send_wifi_config_ap(ssid=None, password=None)
+        self._send_wifi_config_ap(ssid=None, password=None)
 
     def send_ap_ssid(self, ssid):
-        self.send_wifi_config_ap(ssid=ssid, password=None)
+        self._send_wifi_config_ap(ssid=ssid, password=None)
 
     def send_ap_password(self, password):
-        self.send_wifi_config_ap(ssid=None, password=password)
+        self._send_wifi_config_ap(ssid=None, password=password)
 
     @staticmethod
-    def wifi_config_ap_response_is_ok(wifi_config_ap, ssid, password):
+    def _wifi_config_ap_response_is_ok(wifi_config_ap, ssid, password):
         """
         Using the knowledge on the nuances of the protocol implementation,
         infers whether a response produced by the UAV signifies success or
@@ -205,23 +205,23 @@ class Wifi:
         return is_ok
 
     @staticmethod
-    def wifi_config_ap_response_connect_is_ok(wifi_config_ap, ssid, password):
-        return Wifi.wifi_config_ap_response_is_ok(wifi_config_ap, ssid=ssid,
+    def _wifi_config_ap_response_connect_is_ok(wifi_config_ap, ssid, password):
+        return Wifi._wifi_config_ap_response_is_ok(wifi_config_ap, ssid=ssid,
                                                   password=password)
 
     @staticmethod
-    def wifi_config_ap_response_disconnect_is_ok(wifi_config_ap):
-        return Wifi.wifi_config_ap_response_is_ok(wifi_config_ap, ssid=None,
+    def _wifi_config_ap_response_disconnect_is_ok(wifi_config_ap):
+        return Wifi._wifi_config_ap_response_is_ok(wifi_config_ap, ssid=None,
                                                   password=None)
 
     @staticmethod
-    def wifi_config_ap_response_ap_set_ssid_is_ok(wifi_config_ap, ssid):
-        return Wifi.wifi_config_ap_response_is_ok(wifi_config_ap, ssid=ssid,
+    def _wifi_config_ap_response_ap_set_ssid_is_ok(wifi_config_ap, ssid):
+        return Wifi._wifi_config_ap_response_is_ok(wifi_config_ap, ssid=ssid,
                                                   password=None)
 
     @staticmethod
-    def wifi_config_ap_response_ap_set_password_is_ok(wifi_config_ap, password):
-        return Wifi.wifi_config_ap_response_is_ok(wifi_config_ap, ssid=None,
+    def _wifi_config_ap_response_ap_set_password_is_ok(wifi_config_ap, password):
+        return Wifi._wifi_config_ap_response_is_ok(wifi_config_ap, ssid=None,
                                                   password=password)
 
     def ap_set_ssid(self, ssid):
@@ -234,7 +234,7 @@ class Wifi:
             response = self.receive_wifi_config_ap()
 
             if response is not None:
-                ret = self.wifi_config_ap_response_ap_set_ssid_is_ok(
+                ret = self._wifi_config_ap_response_ap_set_ssid_is_ok(
                     response, ssid=ssid)
 
                 if not ret:
@@ -256,7 +256,7 @@ class Wifi:
             response = self.receive_wifi_config_ap()
 
             if response is not None:
-                ret = self.wifi_config_ap_response_ap_set_password_is_ok(
+                ret = self._wifi_config_ap_response_ap_set_password_is_ok(
                     response, password=password)
 
                 if not ret:
@@ -278,7 +278,7 @@ class Wifi:
             response = self.receive_wifi_config_ap()
 
             if response is not None:
-                ret = self.wifi_config_ap_response_connect_is_ok(
+                ret = self._wifi_config_ap_response_connect_is_ok(
                     response, ssid=ssid, password=password)
 
                 if not ret:
@@ -300,7 +300,7 @@ class Wifi:
             response = self.receive_wifi_config_ap()
 
             if response is not None:
-                ret = self.wifi_config_ap_response_disconnect_is_ok(response)
+                ret = self._wifi_config_ap_response_disconnect_is_ok(response)
 
                 if not ret:
                     Logging.warning(Wifi, "failed to disconnect from an AP")
