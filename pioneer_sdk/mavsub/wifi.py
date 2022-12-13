@@ -337,6 +337,8 @@ class Wifi:
                 ssid = response.ssid
                 password = response.password
 
+                break
+
         if ssid is None:
             Logging.warning(Wifi,
                 "failed to receive requested WIFI_CONFIG_AP message in ",
