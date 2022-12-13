@@ -155,7 +155,7 @@ sequenceDiagram
 	participant UAV
 
 	note over Cli, UAV: 299 maps to`WIFI_CONFIG_AP
-	Cli ->> UAV: MAV_CMD_REQUEST_MESSAGE(param1=299, param2=0)
+	Cli ->> UAV: COMMAND_LONG(command=MAV_CMD_REQUEST_MESSAGE, param1=299, param2=0)
 
 	alt Wi-Fi module is used as AP
 		UAV ->> Cli: WIFI_CONFIG_AP(ssid=<SSID>, password=<stringified_md5(PASSWORD)>)
@@ -174,7 +174,7 @@ sequenceDiagram
 	participant UAV
 
 	note over Cli, UAV: 299 maps to`WIFI_CONFIG_AP
-	Cli ->> UAV: MAV_CMD_REQUEST_MESSAGE(param1=299, param2=1)
+	Cli ->> UAV: COMMAND_LONG(command=MAV_CMD_REQUEST_MESSAGE, param1=299, param2=1)
 
 	alt There is an active connection
 		UAV ->> Cli: WIFI_CONFIG_AP(ssid=<SSID>, password=<stringified_md5(PASSWORD)>)
