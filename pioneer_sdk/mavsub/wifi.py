@@ -31,47 +31,6 @@ WIFI_CMD_TARGET_COMPONENT = pymavlink.dialects.v20.common.MAV_COMP_ID_UDP_BRIDGE
 WIFI_CMD_TARGET_SYSTEM = 1
 
 
-class WifiConfigApMessage(MAVLink_wifi_config_ap_message):
-    """
-
-    The definition stored the library does not comply with the MAVLink 2's
-    message definitions. It lacks `mode` and `response` fields.
-
-    This class is a little hack that brings the definition in compliance
-    with the modern standard.
-
-    For how-s and why-s, please refer to `common.py` ("pymavlink" library).
-    """
-
-    id = 299
-    msgname = "WIFI_CONFIG_AP"
-    fieldnames = ["ssid", "password", "mode", "response"]
-    ordered_fieldnames = ["ssid", "password", "mode", "response"]
-    fieldtypes = ["char", "char", "int8_t", "int8_t"]
-    fielddisplays_by_name = {}
-    fieldenums_by_name = {}
-    fieldunits_by_name = {}
-    native_format = bytearray("<ccbb", "ascii")
-    orders = [0, 1, 2, 3]
-    lengths = [1, 1, 1, 1]
-    array_lengths = [32, 64, 0, 0]
-    crc_extra = 19
-    unpacker = struct.Struct("<32s64sbb")
-    instance_field = None
-    instance_offset = -1
-
-    def __init__(self, ssid, password, mode, response):
-        MAVLink_wifi_config_ap_message.__init__(self, ssid, password)
-        self.mode = mode
-        self.response = response
-
-    def pack(self, mav, force_mavlink1=False):
-        packed = self.unpacker.pack(self.ssid, self.password, self.mode,
-                                    self.response)
-        return self._pack(mav, self.crc_extra, packed,
-                          force_mavlink1=force_mavlink1)
-
-
 class Wifi:
     """
     ETL-encapsulating convenience wrapper
