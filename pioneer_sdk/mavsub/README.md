@@ -62,10 +62,9 @@ smoker_hex = "0001fe"
 ### Connect to an external access point (STA mode)
 
 On Pioneer and Pioneer Mini, issuing the "connect" command will make the Wi-Fi
-module to remembed the last AP it has connected to, in case if the attempt was
-successful, and the copter will make the attempt to connect to an Access point.
+module to save the last AP it has connected to, if the attempt was successful.
 
-Alternatively, calling "disconnect" disables auto-connection.
+Alternatively, calling "disconnect" disables auto-connection on boot-up.
 
 ```mermaid
 sequenceDiagram
