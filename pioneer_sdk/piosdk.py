@@ -1,5 +1,6 @@
 from pymavlink import mavutil
 from .mavsub import ftp as mavftp
+from .mavsub import wifi as mavwifi
 from .tools import lua
 import threading
 import socket
@@ -7,7 +8,7 @@ import sys
 import time
 
 
-class Pioneer:
+class Pioneer(mavwifi.Wifi):
     MAV_RESULT = {
         -1: 'SEND_TIMEOUT',
         0: 'ACCEPTED',
@@ -95,6 +96,7 @@ class Pioneer:
         self._message_handler_thread.start()
 
         self.log(msg_type='connection', msg='Connecting to drone...')
+        mavwifi.Wifi.__init__(self, self.mavlink_socket)
 
     def __del__(self):
         self.log(msg="Pioneer class object removed")
