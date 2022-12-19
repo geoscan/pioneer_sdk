@@ -24,6 +24,6 @@ if __name__ == '__main__':
             break
     time.sleep(4)
     pioneer_mini.land()
-    
+
     pioneer_mini.close_connection()
     del pioneer_mini
