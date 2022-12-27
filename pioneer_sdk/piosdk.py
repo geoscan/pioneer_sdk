@@ -48,8 +48,8 @@ class Pioneer(mavwifi.Wifi):
     }
 
     _SUPPORTED_CONNECTION_METHODS = ['udpin', 'udpout', 'serial']
-    _MAV_CMD_PARAM1_REBOOT = 1
-    _MAV_CMD_PARAM1_REBOOT_BOOTLOADER = 3
+    _MAV_CMD_PREFLIGHT_REBOOT_SHUTDOWN_PARAM1_REBOOT = 1
+    _MAV_CMD_PREFLIGHT_REBOOT_SHUTDOWN_PARAM1_REBOOT_BOOTLOADER = 3
 
     def __init__(self, name='pioneer', ip='192.168.4.1', mavlink_port=8001, connection_method='udpout',
                  device='/dev/serial0', baud=115200,
@@ -321,7 +321,8 @@ class Pioneer(mavwifi.Wifi):
     def reboot_board(self):
         return self._send_command_long(command_name='REBOOT_BOARD',
                                        command=mavutil.mavlink.MAV_CMD_PREFLIGHT_REBOOT_SHUTDOWN,
-                                       target_component=1, param1=self._MAV_CMD_PARAM1_REBOOT)
+                                       target_component=1,
+                                       param1=self._MAV_CMD_PREFLIGHT_REBOOT_SHUTDOWN_PARAM1_REBOOT)
 
     def _send_position_target_local_ned(self, command_name, coordinate_system, mask=0b0000_11_0_111_111_111, x=0, y=0,
                                         z=0, vx=0, vy=0, vz=0, afx=0, afy=0, afz=0, yaw=0, yaw_rate=0,
