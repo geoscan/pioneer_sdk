@@ -6,7 +6,7 @@ import os, pathlib
 
 
 def compile(lua_source) -> str:
-    """ Compiles a binary from Lua source file """
+    """Compiles a binary from Lua source file"""
 
     out = "hw.luac"
 
