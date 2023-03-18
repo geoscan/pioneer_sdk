@@ -1,0 +1,20 @@
+name: General CI checks
+on: [push, pull_request, workflow_dispatch]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version-file: '.python-version' # also this file is used by Dependabot, compatible versions https://github.com/dependabot/dependabot-core/blob/main/python/lib/dependabot/python/python_versions.rb#L12-L17
+      - name: Install requirements
+        run: |
+          python -m pip install -U pip
+          python -m pip install -r requirements.txt
+      - name: Check with Black
+        uses: psf/black@stable
+        with:
+          options: "--check --verbose"

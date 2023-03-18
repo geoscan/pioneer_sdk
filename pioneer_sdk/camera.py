@@ -6,8 +6,14 @@ import socket
 
 
 class Camera:
-
-    def __init__(self, timeout=0.5, ip='192.168.4.1', port=8888, video_buffer_size=65000, log_connection=True):
+    def __init__(
+        self,
+        timeout=0.5,
+        ip="192.168.4.1",
+        port=8888,
+        video_buffer_size=65000,
+        log_connection=True,
+    ):
         self.ip = ip
         self.port = port
         self.timeout = timeout
@@ -70,24 +76,24 @@ class Camera:
                 if self.connect():
                     self.connected = True
                     if self.log_connection:
-                        print('Camera CONNECTED')
+                        print("Camera CONNECTED")
                 else:
                     return None
             self._video_frame_buffer, addr = self.udp.recvfrom(self.VIDEO_BUFFER_SIZE)
-            beginning = self._video_frame_buffer.find(b'\xff\xd8')
+            beginning = self._video_frame_buffer.find(b"\xff\xd8")
             if beginning == -1:
                 return None
             self._video_frame_buffer = self._video_frame_buffer[beginning:]
-            end = self._video_frame_buffer.find(b'\xff\xd9')
+            end = self._video_frame_buffer.find(b"\xff\xd9")
             if end == -1:
                 return None
-            self.raw_video_frame = self._video_frame_buffer[:end + 2]
+            self.raw_video_frame = self._video_frame_buffer[: end + 2]
             return self.raw_video_frame
         except TimeoutError:
             if self.connected:
                 self.connected = False
                 if self.log_connection:
-                    print('Camera DISCONNECTED')
+                    print("Camera DISCONNECTED")
             return None
 
     def get_cv_frame(self):
@@ -141,5 +147,7 @@ class VideoStream:
                 continue
 
             # Decode and render JPEG frame
-            camera_frame = cv2.imdecode(np.frombuffer(camera_frame, dtype=np.uint8), cv2.IMREAD_COLOR)
-            cv2.imshow('pioneer_camera_stream', camera_frame)
+            camera_frame = cv2.imdecode(
+                np.frombuffer(camera_frame, dtype=np.uint8), cv2.IMREAD_COLOR
+            )
+            cv2.imshow("pioneer_camera_stream", camera_frame)

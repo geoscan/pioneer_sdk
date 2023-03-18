@@ -9,6 +9,7 @@ Also, for the details of this particular implementation, refer to `./README.md`
 # Bring the necessary paths into the scope
 import sys
 import pathlib
+
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 import struct
 from ..generic import Logging
@@ -17,7 +18,7 @@ from pymavlink.dialects.v20.common import MAVLink_wifi_config_ap_message
 import pymavlink
 import hashlib
 
-RECEIVE_TIMEOUT_SEC = .3
+RECEIVE_TIMEOUT_SEC = 0.3
 RECEIVE_ATTEMPTS = 20
 SEND_RECEIVE_ATTEMPTS = 3
 RECEIVE_IS_BLOCKING = True
@@ -41,8 +42,9 @@ class Wifi:
     def __init__(self, connection):
         self.connection = connection
 
-    def receive_wifi_config_ap(self, blocking=RECEIVE_IS_BLOCKING,
-            timeout=RECEIVE_TIMEOUT_SEC):
+    def receive_wifi_config_ap(
+        self, blocking=RECEIVE_IS_BLOCKING, timeout=RECEIVE_TIMEOUT_SEC
+    ):
         """
         Makes an attempt to receive a WIFI_CONFIG_AP message using both
         socket buffer, and the connection object's internal cache
@@ -51,9 +53,9 @@ class Wifi:
 
         for _ in range(RECEIVE_ATTEMPTS):
             message_type = "WIFI_CONFIG_AP"
-            msg = self.connection.recv_match(type=message_type,
-                                             blocking=blocking,
-                                             timeout=timeout)
+            msg = self.connection.recv_match(
+                type=message_type, blocking=blocking, timeout=timeout
+            )
 
             if not msg:
                 try:
@@ -61,8 +63,9 @@ class Wifi:
 
                     break
                 except KeyError:
-                    Logging.warning(__file__, Wifi, Wifi.receive_wifi_config_ap,
-                                    "failed to receive")
+                    Logging.warning(
+                        __file__, Wifi, Wifi.receive_wifi_config_ap, "failed to receive"
+                    )
                     msg = None
 
         return msg
@@ -131,18 +134,21 @@ class Wifi:
         assert wifi_config_ap is not None
         received_ssid = bytes(wifi_config_ap.ssid, encoding="ascii")
         received_password = wifi_config_ap.password
-        use_password = (password is not None)
-        use_ssid = (ssid is not None)
+        use_password = password is not None
+        use_ssid = ssid is not None
         is_ok = True
 
         if use_ssid:
             ssid = Wifi._ssid_ensure_format(ssid)
-            ssid_ok = (received_ssid == ssid)
+            ssid_ok = received_ssid == ssid
 
             if not ssid_ok:
-                Logging.warning(__file__, Wifi,
-                                f"received SSID {received_ssid} " \
-                                f"is not equal to expected SSID {ssid}")
+                Logging.warning(
+                    __file__,
+                    Wifi,
+                    f"received SSID {received_ssid} "
+                    f"is not equal to expected SSID {ssid}",
+                )
 
             is_ok = is_ok and ssid_ok
 
@@ -152,12 +158,16 @@ class Wifi:
             if password != Wifi._FIELD_MOCK_PLACEHOLDER:
                 password = hashlib.md5(password).hexdigest()
 
-            password_ok = (password == received_password)
+            password_ok = password == received_password
 
             if not password_ok:
-                Logging.warning(__file__, Wifi, f"received password digest " \
-                                f"{received_password} is not equal to expected " \
-                                f"password digest {password}")
+                Logging.warning(
+                    __file__,
+                    Wifi,
+                    f"received password digest "
+                    f"{received_password} is not equal to expected "
+                    f"password digest {password}",
+                )
 
             is_ok = is_ok and password_ok
 
@@ -165,23 +175,27 @@ class Wifi:
 
     @staticmethod
     def _wifi_config_ap_response_connect_is_ok(wifi_config_ap, ssid, password):
-        return Wifi._wifi_config_ap_response_is_ok(wifi_config_ap, ssid=ssid,
-                                                  password=password)
+        return Wifi._wifi_config_ap_response_is_ok(
+            wifi_config_ap, ssid=ssid, password=password
+        )
 
     @staticmethod
     def _wifi_config_ap_response_disconnect_is_ok(wifi_config_ap):
-        return Wifi._wifi_config_ap_response_is_ok(wifi_config_ap, ssid=None,
-                                                  password=None)
+        return Wifi._wifi_config_ap_response_is_ok(
+            wifi_config_ap, ssid=None, password=None
+        )
 
     @staticmethod
     def _wifi_config_ap_response_ap_set_ssid_is_ok(wifi_config_ap, ssid):
-        return Wifi._wifi_config_ap_response_is_ok(wifi_config_ap, ssid=ssid,
-                                                  password=None)
+        return Wifi._wifi_config_ap_response_is_ok(
+            wifi_config_ap, ssid=ssid, password=None
+        )
 
     @staticmethod
     def _wifi_config_ap_response_ap_set_password_is_ok(wifi_config_ap, password):
-        return Wifi._wifi_config_ap_response_is_ok(wifi_config_ap, ssid=None,
-                                                  password=password)
+        return Wifi._wifi_config_ap_response_is_ok(
+            wifi_config_ap, ssid=None, password=password
+        )
 
     def ap_set_ssid(self, ssid):
         """
@@ -194,15 +208,15 @@ class Wifi:
 
             if response is not None:
                 ret = self._wifi_config_ap_response_ap_set_ssid_is_ok(
-                    response, ssid=ssid)
+                    response, ssid=ssid
+                )
 
                 if not ret:
                     Logging.warning(Wifi, "failed to set SSID", response)
 
                 return ret
 
-        Logging.error(Wifi, "failed to receive in", SEND_RECEIVE_ATTEMPTS,
-                        "attempts")
+        Logging.error(Wifi, "failed to receive in", SEND_RECEIVE_ATTEMPTS, "attempts")
 
         return False
 
@@ -216,15 +230,15 @@ class Wifi:
 
             if response is not None:
                 ret = self._wifi_config_ap_response_ap_set_password_is_ok(
-                    response, password=password)
+                    response, password=password
+                )
 
                 if not ret:
                     Logging.warning(Wifi, "failed to set password")
 
                 return ret
 
-        Logging.error(Wifi, "failed to receive in", SEND_RECEIVE_ATTEMPTS,
-                        "attempts")
+        Logging.error(Wifi, "failed to receive in", SEND_RECEIVE_ATTEMPTS, "attempts")
 
         return False
 
@@ -238,15 +252,15 @@ class Wifi:
 
             if response is not None:
                 ret = self._wifi_config_ap_response_connect_is_ok(
-                    response, ssid=ssid, password=password)
+                    response, ssid=ssid, password=password
+                )
 
                 if not ret:
                     Logging.warning(Wifi, "failed to connect to an AP")
 
                 return ret
 
-        Logging.warning(Wifi, "failed to receive in", SEND_RECEIVE_ATTEMPTS,
-                        "attempts")
+        Logging.warning(Wifi, "failed to receive in", SEND_RECEIVE_ATTEMPTS, "attempts")
 
         return False
 
@@ -266,8 +280,7 @@ class Wifi:
 
                 return ret
 
-        Logging.warning(Wifi, "failed to receive in", SEND_RECEIVE_ATTEMPTS,
-                        "attempts")
+        Logging.warning(Wifi, "failed to receive in", SEND_RECEIVE_ATTEMPTS, "attempts")
 
         return False
 
@@ -287,9 +300,17 @@ class Wifi:
         for i in range(SEND_RECEIVE_ATTEMPTS):
             self.connection.mav.command_long_send(
                 target_system=WIFI_CMD_TARGET_SYSTEM,
-                target_component=WIFI_CMD_TARGET_COMPONENT, command=command,
-                confirmation=i, param1=msgid, param2=param2, param3=0, param4=0,
-                param5=0, param6=0, param7=0)
+                target_component=WIFI_CMD_TARGET_COMPONENT,
+                command=command,
+                confirmation=i,
+                param1=msgid,
+                param2=param2,
+                param3=0,
+                param4=0,
+                param5=0,
+                param6=0,
+                param7=0,
+            )
             response = self.receive_wifi_config_ap()
 
             if response is not None:
@@ -299,9 +320,12 @@ class Wifi:
                 break
 
         if ssid is None:
-            Logging.warning(Wifi,
+            Logging.warning(
+                Wifi,
                 "failed to receive requested WIFI_CONFIG_AP message in ",
-                SEND_RECEIVE_ATTEMPTS, "attempts")
+                SEND_RECEIVE_ATTEMPTS,
+                "attempts",
+            )
 
         return ssid, password
 
