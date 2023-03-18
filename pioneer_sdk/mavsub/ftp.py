@@ -8,11 +8,11 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 from ..generic import Logging
 
 TARGET_NETWORK = 0
-RECV_TIMEOUT_SEC = .7
+RECV_TIMEOUT_SEC = 0.7
 
 
 class Op:
-    """ Standard MAVLink FTP subprotocol opcode values """
+    """Standard MAVLink FTP subprotocol opcode values"""
 
     @staticmethod
     def to_string(val):
@@ -41,21 +41,20 @@ class Op:
 
 # Error codes
 class Nak(Exception):
-
     @staticmethod
     def to_string(nak):
         rev_dict = dict((v, k) for k, v in Nak.__dict__.items() if type(v) is int)
         try:
-            return f'{rev_dict[nak]} ({nak})'
+            return f"{rev_dict[nak]} ({nak})"
         except KeyError:
             return f"unknown error code ({nak})"
 
     @staticmethod
     def try_raise(nak):
         """
-		:param nak: Standard MAVLink Nak code
-		:return: If nak does signify a critical error, raises an appropriate exception
-		"""
+        :param nak: Standard MAVLink Nak code
+        :return: If nak does signify a critical error, raises an appropriate exception
+        """
         if nak != Nak.NONE and nak != Nak.EOF:
             raise Nak(nak)
 
@@ -80,7 +79,17 @@ class FtpPayload:
     PAYLOAD_LENGTH = 239
     HEADER_LENGTH = OVERALL_LENGTH - PAYLOAD_LENGTH
 
-    def __init__(self, seq=0, session=0, opcode=0, size=0, req_opcode=0, burst_complete=0, offset=0, payload=b''):
+    def __init__(
+        self,
+        seq=0,
+        session=0,
+        opcode=0,
+        size=0,
+        req_opcode=0,
+        burst_complete=0,
+        offset=0,
+        payload=b"",
+    ):
         self.seq = seq
         self.session = session
         self.opcode = opcode
@@ -105,31 +114,50 @@ class FtpPayload:
         ftp_payload = bytearray(ftp_payload)
 
         if len(ftp_payload) < FtpPayload.HEADER_LENGTH:
-            ftp_payload.extend(bytearray([0]) * (FtpPayload.HEADER_LENGTH - len(ftp_payload)))
+            ftp_payload.extend(
+                bytearray([0]) * (FtpPayload.HEADER_LENGTH - len(ftp_payload))
+            )
 
-        ret = struct.unpack("<HBBBBBxI", ftp_payload[0: FtpPayload.HEADER_LENGTH])
+        ret = struct.unpack("<HBBBBBxI", ftp_payload[0 : FtpPayload.HEADER_LENGTH])
 
         # Extract ftp payload (data field)
-        ftp_payload = ftp_payload[FtpPayload.HEADER_LENGTH:]
-        ftp_payload += b'\x00'  # Apparently, "struct.unpack" cuts trailing zeros
-        ftp_payload = ftp_payload[:ret[3]]  # Cut the tail.
+        ftp_payload = ftp_payload[FtpPayload.HEADER_LENGTH :]
+        ftp_payload += b"\x00"  # Apparently, "struct.unpack" cuts trailing zeros
+        ftp_payload = ftp_payload[: ret[3]]  # Cut the tail.
 
         ret = ret + (ftp_payload,)
         ret = FtpPayload(*ret)
 
         if ret.size != len(ret.payload):
-            Logging.error(__file__, FtpPayload, FtpPayload.construct_from_bytes,
-                          "declared payload size and length of the payload don't match.", "Declared size:", ret.size,
-                          "The actual payload's length:", len(ret.payload), topics=["serialization"])
+            Logging.error(
+                __file__,
+                FtpPayload,
+                FtpPayload.construct_from_bytes,
+                "declared payload size and length of the payload don't match.",
+                "Declared size:",
+                ret.size,
+                "The actual payload's length:",
+                len(ret.payload),
+                topics=["serialization"],
+            )
 
         return ret
 
     def pack(self):
         """
-		:return: bytearray representation of a message
-		"""
-        ret = struct.pack("<HBBBBBBI", self.seq, self.session, self.opcode, self.size, self.req_opcode,
-                          self.burst_complete, 0, self.offset)
+        :return: bytearray representation of a message
+        """
+        ret = struct.pack(
+            "<HBBBBBBI",
+            self.seq,
+            self.session,
+            self.opcode,
+            self.size,
+            self.req_opcode,
+            self.burst_complete,
+            0,
+            self.offset,
+        )
         if self.payload is not None:
             ret += bytearray(self.payload)
         remainder_length = FtpPayload.OVERALL_LENGTH - len(ret)
@@ -144,13 +172,19 @@ class FtpPayload:
         if self.payload is not None:
             plen = len(self.payload)
 
-        ret = "OP seq:%u sess:%u opcode:%s req_opcode:%s size:%u bc:%u ofs:%u plen=%u" % (self.seq,
-                                                                                          self.session,
-                                                                                          Op.to_string(self.opcode),
-                                                                                          Op.to_string(self.req_opcode),
-                                                                                          self.size,
-                                                                                          self.burst_complete,
-                                                                                          self.offset, plen)
+        ret = (
+            "OP seq:%u sess:%u opcode:%s req_opcode:%s size:%u bc:%u ofs:%u plen=%u"
+            % (
+                self.seq,
+                self.session,
+                Op.to_string(self.opcode),
+                Op.to_string(self.req_opcode),
+                self.size,
+                self.burst_complete,
+                self.offset,
+                plen,
+            )
+        )
 
         if plen > 0:
             ret += " [%s]" % self.payload[:]
@@ -188,21 +222,27 @@ def increase_seq(func):
 
 class Ftp:
     """
-	Wraps communication with the device over FTP sub-protocol.
-	"""
+    Wraps communication with the device over FTP sub-protocol.
+    """
 
-    TYPE_LIST_RESPONSE_RE = r'(D|S|F)'
-    NAME_LIST_RESPONSE_RE = r'([^\t\/]+)'
-    SIZE_LIST_RESPONSE_RE = r'(-?[0-9]+)'
-    LIST_RESPONSE_RE = TYPE_LIST_RESPONSE_RE + NAME_LIST_RESPONSE_RE + r'\t' + SIZE_LIST_RESPONSE_RE + r'\0'
+    TYPE_LIST_RESPONSE_RE = r"(D|S|F)"
+    NAME_LIST_RESPONSE_RE = r"([^\t\/]+)"
+    SIZE_LIST_RESPONSE_RE = r"(-?[0-9]+)"
+    LIST_RESPONSE_RE = (
+        TYPE_LIST_RESPONSE_RE
+        + NAME_LIST_RESPONSE_RE
+        + r"\t"
+        + SIZE_LIST_RESPONSE_RE
+        + r"\0"
+    )
 
     def __init__(self, connection, target_network=0):
         """
-		:param connection: MAVLink connection instance
-		:param sysid:  target component id
-		:param compid: target system id
-		:param target_network: target network (see description for MAVLink FTP subprotocol)
-		"""
+        :param connection: MAVLink connection instance
+        :param sysid:  target component id
+        :param compid: target system id
+        :param target_network: target network (see description for MAVLink FTP subprotocol)
+        """
 
         self.connection = connection
         self.seq = 0
@@ -213,34 +253,41 @@ class Ftp:
 
         Logging.debug(__file__, Ftp, Ftp.send, "Sending payload: ", str(payload))
 
-        self.connection.mav.file_transfer_protocol_send(self.target_network, self.connection.target_system,
-                                                        self.connection.target_component, payload.pack())
+        self.connection.mav.file_transfer_protocol_send(
+            self.target_network,
+            self.connection.target_system,
+            self.connection.target_component,
+            payload.pack(),
+        )
 
     def receive(self):
         """
-		:return: FtpPayload, or None
-		"""
+        :return: FtpPayload, or None
+        """
         # msg = self.connection.recv_match(type="FILE_TRANSFER_PROTOCOL",
         # 	condition=f"FILE_TRANSFER_PROTOCOL.seq=={self.seq}", blocking=True,
         # 	timeout=RECV_TIMEOUT_SEC)
 
         message_type = "FILE_TRANSFER_PROTOCOL"
-        msg = self.connection.recv_match(type=message_type, blocking=True,
-            timeout=RECV_TIMEOUT_SEC)
+        msg = self.connection.recv_match(
+            type=message_type, blocking=True, timeout=RECV_TIMEOUT_SEC
+        )
 
         if not msg:
             try:
                 msg = self.connection.messages.pop(message_type)
             except KeyError:
-                Logging.warning(__file__, Ftp, Ftp.receive, "failed to receive", topics=['Conn'])
+                Logging.warning(
+                    __file__, Ftp, Ftp.receive, "failed to receive", topics=["Conn"]
+                )
                 msg = None
 
         return msg
 
     def receive_payload(self):
         """
-		Decorator over self.receive that extracts payload
-		"""
+        Decorator over self.receive that extracts payload
+        """
         msg = self.receive()
 
         if not msg:
@@ -249,24 +296,38 @@ class Ftp:
         payload = FtpPayload.construct_from_bytes(msg.payload)
 
         if payload.seq != self.seq:
-            Logging.info(__file__, Ftp, Ftp.receive_payload,
-                         "Got payload, but `seq` fields don't match", "current seq:", self.seq, "received payload:",
-                         str(payload), topics=["conn"])
+            Logging.info(
+                __file__,
+                Ftp,
+                Ftp.receive_payload,
+                "Got payload, but `seq` fields don't match",
+                "current seq:",
+                self.seq,
+                "received payload:",
+                str(payload),
+                topics=["conn"],
+            )
 
             return None
 
-        Logging.debug(__file__, Ftp, Ftp.receive_payload, "Received payload:", str(payload))
+        Logging.debug(
+            __file__, Ftp, Ftp.receive_payload, "Received payload:", str(payload)
+        )
 
         return payload
 
     @increase_seq
     def list_directory(self, offset, file_path):
         """
-		:param directory: Path to the requested directory, unix-like format
-		:return: (NakCode, [("D"|"F"|"S", NAME, SIZE), ...]), or None if failed to get a response
-		"""
-        payload = FtpPayload(opcode=Op.LIST_DIRECTORY, size=len(file_path), offset=offset,
-                             payload=bytearray(file_path, encoding='ascii'))
+        :param directory: Path to the requested directory, unix-like format
+        :return: (NakCode, [("D"|"F"|"S", NAME, SIZE), ...]), or None if failed to get a response
+        """
+        payload = FtpPayload(
+            opcode=Op.LIST_DIRECTORY,
+            size=len(file_path),
+            offset=offset,
+            payload=bytearray(file_path, encoding="ascii"),
+        )
         self.send(payload)
         payload = self.receive_payload()
 
@@ -282,20 +343,26 @@ class Ftp:
 
         ret = []
 
-        for m in re.finditer(Ftp.LIST_RESPONSE_RE, payload.payload.decode('ascii')):
+        for m in re.finditer(Ftp.LIST_RESPONSE_RE, payload.payload.decode("ascii")):
             type = m.group(1)
             name = m.group(2)
             size = int(m.group(3))
-            ret += [(type, name, size,)]
+            ret += [
+                (
+                    type,
+                    name,
+                    size,
+                )
+            ]
 
         return payload.nak, ret
 
     @increase_seq
     def terminate_session(self, session):
         """
-		:param session: Session ID
-		:return: NakCode, or None if failed to get a response
-		"""
+        :param session: Session ID
+        :return: NakCode, or None if failed to get a response
+        """
         payload = FtpPayload(opcode=Op.TERMINATE_SESSION, session=session)
         self.send(payload)
         payload = self.receive_payload()
@@ -308,8 +375,8 @@ class Ftp:
     @increase_seq
     def reset_sessions(self):
         """
-		:return: NakCode, or None if failed to get a response
-		"""
+        :return: NakCode, or None if failed to get a response
+        """
         payload = FtpPayload(opcode=Op.RESET_SESSIONS)
         self.send(payload)
         payload = self.receive_payload()
@@ -322,11 +389,16 @@ class Ftp:
     @increase_seq
     def open_file_ro(self, file_path):
         """
-		:param file_path: Path to the requested file, unix-like format
-		:return: (NakCode, Session ID), or None if failed to get a response
-		"""
-        self.send(FtpPayload(opcode=Op.OPEN_FILE_RO, size=len(file_path),
-                             payload=bytearray(file_path, encoding='ascii')))
+        :param file_path: Path to the requested file, unix-like format
+        :return: (NakCode, Session ID), or None if failed to get a response
+        """
+        self.send(
+            FtpPayload(
+                opcode=Op.OPEN_FILE_RO,
+                size=len(file_path),
+                payload=bytearray(file_path, encoding="ascii"),
+            )
+        )
         payload = self.receive_payload()
 
         if not payload:
@@ -337,12 +409,14 @@ class Ftp:
     @increase_seq
     def read_file(self, size, session, offset):
         """
-		:param size: Size of the chunk to read
-		:param session: Session ID associated with the requested file
-		:param offset: Offset to read from
-		:return: (NakCode, bytearray), or None if failed to get a response
-		"""
-        self.send(FtpPayload(opcode=Op.READ_FILE, size=size, session=session, offset=offset))
+        :param size: Size of the chunk to read
+        :param session: Session ID associated with the requested file
+        :param offset: Offset to read from
+        :return: (NakCode, bytearray), or None if failed to get a response
+        """
+        self.send(
+            FtpPayload(opcode=Op.READ_FILE, size=size, session=session, offset=offset)
+        )
 
         payload = self.receive_payload()
 
@@ -354,10 +428,16 @@ class Ftp:
     @increase_seq
     def create_file(self, file_path):
         """
-		:param file_path: Path to the requested file, unix-like format
-		:return: (NakCode, Session ID), or None if failed to get a response
-		"""
-        self.send(FtpPayload(opcode=Op.READ_FILE, size=len(file_path), payload=bytearray(file_path, encoding='ascii')))
+        :param file_path: Path to the requested file, unix-like format
+        :return: (NakCode, Session ID), or None if failed to get a response
+        """
+        self.send(
+            FtpPayload(
+                opcode=Op.READ_FILE,
+                size=len(file_path),
+                payload=bytearray(file_path, encoding="ascii"),
+            )
+        )
         payload = self.receive_payload()
 
         if not payload:
@@ -369,12 +449,19 @@ class Ftp:
     def write_file(self, session, offset, content):
         """
 
-		:param session: Session ID associated with the requested file
-		:param content: Payload to write to the file
-		:return: NakCode, or None if failed to get a response
-		"""
-        self.send(FtpPayload(opcode=Op.WRITE_FILE, size=len(content), offset=offset, session=session,
-                             payload=bytearray(content)))
+        :param session: Session ID associated with the requested file
+        :param content: Payload to write to the file
+        :return: NakCode, or None if failed to get a response
+        """
+        self.send(
+            FtpPayload(
+                opcode=Op.WRITE_FILE,
+                size=len(content),
+                offset=offset,
+                session=session,
+                payload=bytearray(content),
+            )
+        )
         payload = self.receive_payload()
 
         if not payload:
@@ -385,11 +472,16 @@ class Ftp:
     @increase_seq
     def remove_file(self, file_path):
         """
-		:param file_path: Path to the requested file, unix-like format
-		:return: NakCode, or None if failed to get a response
-		"""
+        :param file_path: Path to the requested file, unix-like format
+        :return: NakCode, or None if failed to get a response
+        """
         self.send(
-            FtpPayload(opcode=Op.REMOVE_FILE, size=len(file_path), payload=bytearray(file_path, encoding='ascii')))
+            FtpPayload(
+                opcode=Op.REMOVE_FILE,
+                size=len(file_path),
+                payload=bytearray(file_path, encoding="ascii"),
+            )
+        )
 
         payload = self.receive_payload()
 
@@ -401,11 +493,16 @@ class Ftp:
     @increase_seq
     def create_directory(self, dir_path):
         """
-		:param dir_path: Path to the requested file, unix-like format
-		:return: NakCode, or None if failed to get a response
-		"""
-        self.send(FtpPayload(opcode=Op.CREATE_DIRECTORY, size=len(dir_path),
-                             payload=bytearray(dir_path, encoding='ascii')))
+        :param dir_path: Path to the requested file, unix-like format
+        :return: NakCode, or None if failed to get a response
+        """
+        self.send(
+            FtpPayload(
+                opcode=Op.CREATE_DIRECTORY,
+                size=len(dir_path),
+                payload=bytearray(dir_path, encoding="ascii"),
+            )
+        )
 
         payload = self.receive_payload()
 
@@ -417,11 +514,16 @@ class Ftp:
     @increase_seq
     def remove_directory(self, dir_path):
         """
-		:param dir_path: Path to the requested directory, unix-like format
-		:return: NakCode, or None if failed to get a response
-		"""
-        self.send(FtpPayload(opcode=Op.CREATE_DIRECTORY, size=len(dir_path),
-                             payload=bytearray(dir_path, encoding='ascii')))
+        :param dir_path: Path to the requested directory, unix-like format
+        :return: NakCode, or None if failed to get a response
+        """
+        self.send(
+            FtpPayload(
+                opcode=Op.CREATE_DIRECTORY,
+                size=len(dir_path),
+                payload=bytearray(dir_path, encoding="ascii"),
+            )
+        )
 
         payload = self.receive_payload()
 
@@ -433,11 +535,16 @@ class Ftp:
     @increase_seq
     def open_file_wo(self, file_path):
         """
-		:param file_path: Path to the requested file, unix-like format
-		:return: (NakCode, Session ID), or None if failed to get a response
-		"""
-        self.send(FtpPayload(opcode=Op.OPEN_FILE_WO, size=len(file_path),
-                             payload=bytearray(file_path, encoding='ascii')))
+        :param file_path: Path to the requested file, unix-like format
+        :return: (NakCode, Session ID), or None if failed to get a response
+        """
+        self.send(
+            FtpPayload(
+                opcode=Op.OPEN_FILE_WO,
+                size=len(file_path),
+                payload=bytearray(file_path, encoding="ascii"),
+            )
+        )
 
         payload = self.receive_payload()
 
@@ -449,12 +556,18 @@ class Ftp:
     @increase_seq
     def truncate_file(self, offset, file_path):
         """
-		:param offset: Offset for truncation operation
-		:param file_path: Path to the requested file, unix-like format
-		:return: NakCode, or None if failed to get a response
-		"""
-        self.send(FtpPayload(opcode=Op.TRUNCATE_FILE, size=len(file_path), offset=offset,
-                             payload=bytearray(file_path, encoding='ascii')))
+        :param offset: Offset for truncation operation
+        :param file_path: Path to the requested file, unix-like format
+        :return: NakCode, or None if failed to get a response
+        """
+        self.send(
+            FtpPayload(
+                opcode=Op.TRUNCATE_FILE,
+                size=len(file_path),
+                offset=offset,
+                payload=bytearray(file_path, encoding="ascii"),
+            )
+        )
 
         payload = self.receive_payload()
 
@@ -466,14 +579,20 @@ class Ftp:
     @increase_seq
     def rename(self, src_file_path, dest_file_path):
         """
-		:param src_file_path: Path to the initial file, unix-like format
-		:param dest_file_path: Path to the file after renaming, unix-like format
-		:return: NakCode, or None if failed to get a response
-		"""
-        paths_packed = bytearray(src_file_path, encoding='ascii') + '\0' + bytearray(dest_file_path,
-                                                                                     encoding='ascii') + '\0'
+        :param src_file_path: Path to the initial file, unix-like format
+        :param dest_file_path: Path to the file after renaming, unix-like format
+        :return: NakCode, or None if failed to get a response
+        """
+        paths_packed = (
+            bytearray(src_file_path, encoding="ascii")
+            + "\0"
+            + bytearray(dest_file_path, encoding="ascii")
+            + "\0"
+        )
 
-        self.send(FtpPayload(opcode=Op.RENAME, size=len(paths_packed), payload=paths_packed))
+        self.send(
+            FtpPayload(opcode=Op.RENAME, size=len(paths_packed), payload=paths_packed)
+        )
         payload = self.receive_payload()
 
         if not payload:
@@ -484,12 +603,20 @@ class Ftp:
     @increase_seq
     def calc_file_crc32(self, file_path):
         """
-		:param file_path: Path to the requested file, unix-like format
-		:return: (NakCode, Crc32), or None if failed to get a response
-		"""
-        NETWORK_BYTE_ORDER = 'big'
-        self.send(FtpPayload(opcode=Op.CALC_FILE_CRC32, size=len(file_path), payload=bytearray(file_path)))
-        payload = self.receive_payload()  # TODO: payload calculation may take some time for larger files. Increase the timeout
+        :param file_path: Path to the requested file, unix-like format
+        :return: (NakCode, Crc32), or None if failed to get a response
+        """
+        NETWORK_BYTE_ORDER = "big"
+        self.send(
+            FtpPayload(
+                opcode=Op.CALC_FILE_CRC32,
+                size=len(file_path),
+                payload=bytearray(file_path),
+            )
+        )
+        payload = (
+            self.receive_payload()
+        )  # TODO: payload calculation may take some time for larger files. Increase the timeout
 
         if not payload:
             return None
@@ -502,11 +629,11 @@ class Ftp:
 
 class FtpWrapper:
     """
-	It handles the following aspects of communication:
-	1. Connection monitoring
-	2. Session management
-	3. Request repetition
-	"""
+    It handles the following aspects of communication:
+    1. Connection monitoring
+    2. Session management
+    3. Request repetition
+    """
 
     # TODO: as for 2021-09-15, Geoscan MAVLink implementation kicks off file or directory creation/removal requests as those make no sense to the Autopilot. Implement relevant methods if and when it stops being the case
 
@@ -526,23 +653,25 @@ class FtpWrapper:
             if res is not None:
                 return res
 
-        raise ConnectionError(f"Couldn't get a response in {FtpWrapper.N_RECEIVE_ATTEMPTS} attempts")
+        raise ConnectionError(
+            f"Couldn't get a response in {FtpWrapper.N_RECEIVE_ATTEMPTS} attempts"
+        )
 
     def download_file(self, src, dest) -> bytes or None:
         """
-		:param src: servers-side path
-		:param dest: client-side path, or None, if the result should be stored in RAM
-		:return: bytes if dest is None. None otherwise
-		"""
+        :param src: servers-side path
+        :param dest: client-side path, or None, if the result should be stored in RAM
+        :return: bytes if dest is None. None otherwise
+        """
 
         class ReadState:
             """
-			Manages offset shifting and file I/O, if necessary (which depends on whether `dest == None`)
-			"""
+            Manages offset shifting and file I/O, if necessary (which depends on whether `dest == None`)
+            """
 
             def __init__(self):
                 self._file = open(dest, "wb") if dest is not None else None
-                self._chunk = b''
+                self._chunk = b""
                 self.offset = 0
 
             @property
@@ -575,8 +704,12 @@ class FtpWrapper:
         read_state = ReadState()
 
         while nak == Nak.NONE:
-            nak, chunk = self._try_receive(self.ftp.read_file, size=FtpWrapper.CHUNK_SIZE, session=sid,
-                                           offset=read_state.offset)
+            nak, chunk = self._try_receive(
+                self.ftp.read_file,
+                size=FtpWrapper.CHUNK_SIZE,
+                session=sid,
+                offset=read_state.offset,
+            )
             Nak.try_raise(nak)
             if nak == Nak.NONE:
                 read_state.handle_chunk(chunk)
@@ -589,10 +722,10 @@ class FtpWrapper:
 
     def upload_file(self, src, dest) -> type(Nak.NONE):
         """
-		:param src: client-side path of type `str`, or bytes
-		:param dest: server-side path
-		:return: None, on success. Exception otherwise
-		"""
+        :param src: client-side path of type `str`, or bytes
+        :param dest: server-side path
+        :return: None, on success. Exception otherwise
+        """
 
         class WriteState:
             def __init__(self):
@@ -601,7 +734,7 @@ class FtpWrapper:
                 self._offset = 0
                 src_path = type(src) is str and os.path.isfile(src)
 
-                self._file = open(src, 'rb') if src_path else None
+                self._file = open(src, "rb") if src_path else None
 
             def __del__(self):
                 if self._file is not None:
@@ -609,7 +742,9 @@ class FtpWrapper:
 
             def handle_chunk(self):
                 if self._file is None:
-                    next_chunk = src[self._offset: self._offset + FtpWrapper.CHUNK_SIZE]
+                    next_chunk = src[
+                        self._offset : self._offset + FtpWrapper.CHUNK_SIZE
+                    ]
                 else:
                     next_chunk = self._file.read(FtpWrapper.CHUNK_SIZE)
 
@@ -641,15 +776,17 @@ class FtpWrapper:
 
     def list_directory(self, path) -> None:
         """
-		:param path: server-side path
-		:return: List of directories, on successful receive. Exception otherwise
-		"""
+        :param path: server-side path
+        :return: List of directories, on successful receive. Exception otherwise
+        """
         nak = Nak.NONE
         file_list = []
         read_offset = 0
 
         while nak == Nak.NONE:
-            nak, fl = self._try_receive(self.ftp.list_directory, offset=read_offset, file_path=path)
+            nak, fl = self._try_receive(
+                self.ftp.list_directory, offset=read_offset, file_path=path
+            )
             file_list += fl
             Nak.try_raise(nak)
             read_offset += len(fl)
