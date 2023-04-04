@@ -13,11 +13,11 @@ height_3 = 0.75
 #  <------- height_1 ------- height_2 ------- height_3 ------->
 #     red             green            blue             white
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     pioneer_mini = Pioneer(logger=False)
     curr_time = time.time()
     while True:
-        if time.time()-curr_time > delta_time:
+        if time.time() - curr_time > delta_time:
             tof_data = pioneer_mini.get_dist_sensor_data()
             print(tof_data)
             if tof_data is not None:
