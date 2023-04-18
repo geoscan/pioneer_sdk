@@ -106,7 +106,7 @@ class VideoStream:
     def __init__(self, logger=True):
         self.camera = Camera(log_connection=logger)
         self.logger = logger
-        self._vidio_stream = None
+        self._video_stream = None
         self._stop = threading.Event()
         self._stop.set()
 
@@ -114,8 +114,8 @@ class VideoStream:
         if not self._stop.is_set():
             return
         self._stop.clear()
-        self._vidio_stream = threading.Thread(target=self._stream, daemon=True)
-        self._vidio_stream.start()
+        self._video_stream = threading.Thread(target=self._stream, daemon=True)
+        self._video_stream.start()
 
     def stop(self):
         self._stop.set()
