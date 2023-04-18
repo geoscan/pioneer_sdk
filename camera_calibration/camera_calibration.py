@@ -135,10 +135,10 @@ def load_coefficients(path):
     # note we also have to specify the type to retrieve other wise we only get a
     # FileNode object back instead of a matrix
     camera_matrix = cv_file.getNode("mtx").mat()
-    dist_matrix = cv_file.getNode("dist").mat()
+    dist_coeffs = cv_file.getNode("dist").mat()
 
     cv_file.release()
-    return camera_matrix, dist_matrix
+    return camera_matrix, dist_coeffs
 
 
 def main():

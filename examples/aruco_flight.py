@@ -4,24 +4,29 @@ import numpy as np
 
 
 def load_coefficients(path):
-    """Loads camera matrix and distortion coefficients."""
-    # FILE_STORAGE_READ
     cv_file = cv2.FileStorage(path, cv2.FILE_STORAGE_READ)
 
-    # note we also have to specify the type to retrieve other wise we only get a
-    # FileNode object back instead of a matrix
     camera_matrix = cv_file.getNode("mtx").mat()
-    dist_matrix = cv_file.getNode("dist").mat()
+    dist_coeffs = cv_file.getNode("dist").mat()
 
     cv_file.release()
-    return camera_matrix, dist_matrix
+    return camera_matrix, dist_coeffs
 
 
 if __name__ == "__main__":
-    camera_mtx, camera_dist = load_coefficients("data.yml")
+    camera_matrix, dist_coeffs = load_coefficients("data.yml")
     size_of_marker = 0.1  # side length in meters
-    aruco_dict = cv2.aruco.Dictionary_get(cv2.aruco.DICT_6X6_1000)
-    aruco_parameters = cv2.aruco.DetectorParameters_create()
+    points_of_marker = np.array(
+        [
+            (size_of_marker / 2, -size_of_marker / 2, 0),
+            (-size_of_marker / 2, -size_of_marker / 2, 0),
+            (-size_of_marker / 2, size_of_marker / 2, 0),
+            (size_of_marker / 2, size_of_marker / 2, 0),
+        ]
+    )
+    aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_6X6_50)
+    aruco_params = cv2.aruco.DetectorParameters()
+    aruco_detector = cv2.aruco.ArucoDetector(aruco_dict, aruco_params)
     camera = Camera()
     mini = Pioneer()
     # Go to start point
@@ -35,12 +40,10 @@ if __name__ == "__main__":
         coordinates = None
         try:
             frame = camera.get_cv_frame()
-            corners, ids, rejected_img_points = cv2.aruco.detectMarkers(
-                frame, aruco_dict, parameters=aruco_parameters
-            )
+            corners, ids, rejected_img_points = aruco_detector.detectMarkers(frame)
             # If markers are detected
             if np.all(ids is not None):
-                # Find center of aruco marker on screen
+                # Find center of first aruco marker on screen
                 x_center = int(
                     (
                         corners[0][0][0][0]
@@ -68,12 +71,12 @@ if __name__ == "__main__":
                 # Draw markers
                 cv2.aruco.drawDetectedMarkers(frame, corners)
 
-                r_vec_rodrigues, t_vec, _ = cv2.aruco.estimatePoseSingleMarkers(
-                    corners, size_of_marker, camera_mtx, camera_dist
+                success, rvecs, tvecs = cv2.solvePnP(
+                    points_of_marker, corners[0], camera_matrix, dist_coeffs
                 )
-                coordinates = [t_vec.item(0), t_vec.item(1), t_vec.item(2)]
+                coordinates = [tvecs.item(0), tvecs.item(1), tvecs.item(2)]
                 # If you need to, you can draw the axes using the following code:
-                # cv2.drawFrameAxes(frame, camera_mtx, camera_dist, r_vec_rodrigues, t_vec, 0.01)
+                # cv2.drawFrameAxes(frame, camera_matrix, dist_coeffs, rvecs, tvecs, 0.1)
 
         except cv2.error:
             continue
