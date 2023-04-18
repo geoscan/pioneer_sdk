@@ -2,8 +2,8 @@ from pioneer_sdk import Pioneer
 import time
 
 
-if __name__ == '__main__':
-    print('start')
+if __name__ == "__main__":
+    print("start")
     pioneer_mini = Pioneer()
     time.sleep(3)
     pioneer_mini.arm()
