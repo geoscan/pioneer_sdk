@@ -21,7 +21,7 @@ setup(
           'pymavlink==2.4.37',
           'pyserial==3.5',
           'future==0.18.3',
-          'numpy==1.21.2',
+          'numpy',
           'opencv-contrib-python==4.7.0.72'
       ],
   classifiers=[
