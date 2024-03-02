@@ -10,7 +10,7 @@ Use the package manager [pip](https://pip.pypa.io/en/stable/) to install pioneer
 
 ```bash
 python3 -m pip install pioneer_sdk or
-python3 -m pip install git+https://github.com/geoscan/pioneer_sdk.git@master
+python3 -m pip install git+https://github.com/geoscan/pioneer_sdk.git@wyf2024
 ```
 ## Usage
 

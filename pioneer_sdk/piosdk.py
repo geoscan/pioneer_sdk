@@ -363,7 +363,7 @@ class Pioneer(mavwifi.Wifi):
 
         self.log(msg_type=cmd_name, msg=f'sending point {{LOCAL, x:{x}, y:{y}, z:{z}, yaw:{yaw}}} ...')
         mask = 0b0000_10_0_111_111_000  # _ _ _ _ yaw_rate yaw   force_set   afz afy afx   vz vy vx   z y x
-        x, y, z = y, x, -z  # ENU coordinates to NED coordinates
+        x, y, z = x, -y, -z  # ENU coordinates to NED coordinates (may be only LPS)
         self._point_reached = False
         return self._send_position_target_local_ned(command_name=cmd_name,
                                                     coordinate_system=mavutil.mavlink.MAV_FRAME_LOCAL_NED,
@@ -388,7 +388,7 @@ class Pioneer(mavwifi.Wifi):
 
         self.log(msg_type=cmd_name, msg=f'sending speed {{LOCAL, vx:{vx}, vy:{vy}, vz:{vz}, yaw_rate:{yaw_rate}}} ...')
         mask = 0b0000_01_0_111_000_111  # _ _ _ _ yaw_rate yaw   force_set   afz afy afx   vz vy vx   z y x
-        vx, vy, vz = vy, vx, -vz  # ENU coordinates to NED coordinates
+        vx, vy, vz = vx, -vy, -vz  # ENU coordinates to NED coordinates
         return self._send_position_target_local_ned(command_name=cmd_name,
                                                     coordinate_system=mavutil.mavlink.MAV_FRAME_LOCAL_NED,
                                                     mask=mask, vx=vx, vy=vy, vz=vz, yaw_rate=yaw_rate)
